@@ -1,1 +1,2 @@
-# chessgame
+# Chessgame
+Online Chess Game [Java]
