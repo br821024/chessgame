@@ -14,14 +14,18 @@ public class GUI extends JFrame {
 		controller = client;
 		login = new Login(controller);
 		center = new Center(controller);
-		//center.setVisible(true);
-		//center.addRoom(new roomButton(controller,"Aneros","Aneros",0));
-		//center.addRoom(new roomButton(controller,"Anoymous","Anoymous",0));
-		//center.addRoom(new roomButton(controller,"Anoymous1","Anoymous1",0));
-		//center.addRoom(new roomButton(controller,"Anoymous2","Anoymous2",2));
-		//center.addRoom(new roomButton(controller,"Anoymous3","Anoymous3",2));
-		//center.addRoom(new roomButton(controller,"Anoymous4","Anoymous4",2));
-		//center.joinRoom("Aneros","join1",1);
+		
+		center.setVisible(true);
+		center.addRoom(new roomButton(controller,"ABC","ABC",1));
+		center.addRoom(new roomButton(controller,"123","123",0));
+		center.addRoom(new roomButton(controller,"456","456",2));
+		center.addRoom(new roomButton(controller,"789","789",0));
+		center.addRoom(new roomButton(controller,"101","101",1));
+		center.addRoom(new roomButton(controller,"112","112",2));
+		center.joinRoom("ABC","DEF",0);
+		center.joinRoom("123","456",1);
+		center.joinRoom("456","789",0);
+		
 	}
 	
 	public void Room(String action,StringTokenizer token){

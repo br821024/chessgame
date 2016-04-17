@@ -188,8 +188,13 @@ class roomButton extends JButton {
 		setplayer(player,side);
 	}
 	
-	public void setplayer(String player,int side){
-		this.player[side] = player;
+	public void setplayer(String player,int side){	
+		if(this.player[2].equals("")) this.player[side] = player;
+		else{
+			this.player[1-side] = this.player[2];
+			this.player[side] = player;
+			this.player[2] = "";
+		}
 		formatText(side);
 	}
 	private void formatText(int side){
