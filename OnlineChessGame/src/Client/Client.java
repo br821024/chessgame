@@ -9,12 +9,11 @@ import java.net.URL;
 import java.util.StringTokenizer;
 
 public class Client {
-	public static void main(String[] args){
+	public static void main(String[] args){ 	// Client start at here
 		//new Client("https://gurokami.no-ip.org",48763);
 		new Client(48763);
 	}
-	
-	public Client(String hostname,int port){
+	public Client(String hostname,int port){	// connect with URL
 		try {
 			Socket socket = new Socket(InetAddress.getByName(new URL(hostname).getHost()).getHostAddress(),port);
 			ClientThread client = new ClientThread(socket);
@@ -22,8 +21,7 @@ public class Client {
 			client.setGUI(gui);
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); }
 	}
-	
-	public Client(int port){ // local host
+	public Client(int port){					// use local host
 		try {
 			Socket socket = new Socket("127.0.0.1",port);
 			ClientThread client = new ClientThread(socket);
@@ -60,16 +58,20 @@ class ClientThread implements Runnable {
 			String command = token.nextToken();			// [Command]
 			if(command.equals("End")) End();
 			
-			if(status==0){
-				if(command.equals("Success!")){ status++; gui.Login(); System.out.println("Login Success!"); }
+			if(status==0){		// state Connected
+				if(command.equals("Success")){ status++; gui.Login(); System.out.println("Login Success!"); }
 			}
-			else if(status==1){
+			else if(status==1){	// state Login
 				if(command.equals("Logout!")){ status--; gui.Logout(); }
-				else if(command.equals("Roomlist")){ getroomlist(); }
-				else if(command.equals("Create")){ createroom(); }
-				else if(command.equals("Join")){ joinroom(); }
-				else if(command.equals("Delete")){ deleteroom(); }
-				else if(command.equals("Success")){ status++; gui.Play(Integer.parseInt(token.nextToken())); }
+				else if(command.equals("Success")){ status++; gui.Wait(); }
+				else if(command.equals("Create")){ gui.Room(command,token); }
+				else if(command.equals("Join")){ gui.Room(command,token); }
+				else if(command.equals("Room")){ gui.Room(command,token); }
+			}
+			else if(status==2){	// state Waiting
+				if(command.equals("Start")){ status++; gui.Play(Integer.parseInt(token.nextToken()));}
+			}
+			else if(status==3){	// state Playing
 				
 			}
 		}
@@ -81,16 +83,16 @@ class ClientThread implements Runnable {
 	public void setGUI(GUI gui){
 		this.gui = gui; 
 	}
-	public void End(){ // End this Thread
-		gui.End();
-		status = -1;
-		send("End");
-	}
 	public void send(String message){ // Send message to Server
 		try {
 			outputstream.write(message.getBytes());
 			System.out.println("Client Send: "+message);
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); status = -1; }
+	}
+	public void End(){ // End this Thread
+		gui.End();
+		status = -1;
+		send("End");
 	}
 	private String receive(){ // Receive message from Server
 		String receive = null;
@@ -100,21 +102,6 @@ class ClientThread implements Runnable {
 			System.out.println("Client Recv: "+receive);
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); status = -1; }
 		return receive;
-	}
-	private void getroomlist(){
-		
-	}
-	private void createroom(){
-		String account = token.nextToken();
-		String username = token.nextToken();
-		int side = Integer.parseInt(token.nextToken());
-		gui.createroom(account,username,side);
-	}
-	private void joinroom(){
-		
-	}
-	private void deleteroom(){
-		String account = token.nextToken();
 	}
 }
 

@@ -12,7 +12,7 @@ public class MySQL {
 	public MySQL(){
 		try{
 			Class.forName("com.mysql.jdbc.Driver");
-			connection = DriverManager.getConnection("jdbc:mysql://localhost/chessgame?autoReconnect=true&useSSL=True",user,pass);
+			connection = DriverManager.getConnection("jdbc:mysql://localhost/?autoReconnect=true&useSSL=True",user,pass);
 			statement = connection.createStatement();
 			System.out.println("Connected with MySQL Server!");
 		}
@@ -33,7 +33,7 @@ public class MySQL {
 	
 	private void createTable(){
 		try{
-			statement.executeUpdate("CREATE TABLE IF NOT EXISTS login(account_id INT(20) UNSIGNED NOT NULL AUTO_INCREMENT,user_id VARCHAR(32) NOT NULL,user_pass VARCHAR(32) NOT NULL ,user_name VARCHAR(32) NOT NULL DEFAULT \"Anonymous\", PRIMARY KEY(account_id) , UNIQUE(user_id));");
+			statement.executeUpdate("CREATE TABLE IF NOT EXISTS chessgame.login(account_id INT(20) UNSIGNED NOT NULL AUTO_INCREMENT,user_id VARCHAR(32) NOT NULL,user_pass VARCHAR(32) NOT NULL ,user_name VARCHAR(32) NOT NULL DEFAULT \"Anonymous\", PRIMARY KEY(account_id) , UNIQUE(user_id));");
 		}catch(SQLException e){}
 	}
 	
@@ -41,7 +41,7 @@ public class MySQL {
 		int result = -1;
 		try{
 			PreparedStatement prstmt = null;
-			prstmt = connection.prepareStatement("SELECT COUNT(*) FROM login WHERE user_id = ?");
+			prstmt = connection.prepareStatement("SELECT COUNT(*) FROM chessgame.login WHERE user_id = ?");
 			prstmt.setString(1,account);
 			resultset = prstmt.executeQuery();
 			if(resultset.next()){result = resultset.getInt(1);}
@@ -54,7 +54,7 @@ public class MySQL {
 		Boolean result = false;
 		try{
 			PreparedStatement prstmt = null;
-			prstmt = connection.prepareStatement("SELECT user_pass FROM login WHERE user_id = ?");
+			prstmt = connection.prepareStatement("SELECT user_pass FROM chessgame.login WHERE user_id = ?");
 			prstmt.setString(1,account);
 			resultset = prstmt.executeQuery();
 			if(resultset.next()){
@@ -69,7 +69,7 @@ public class MySQL {
 	public Boolean register(String account,String password){
 		try{
 			PreparedStatement prstmt = null;
-			prstmt = connection.prepareStatement("INSERT INTO login VALUES(?,?,?,DEFAULT)");
+			prstmt = connection.prepareStatement("INSERT INTO chessgame.login VALUES(?,?,?,DEFAULT)");
 			prstmt.setNull(1,Types.INTEGER);
 			prstmt.setString(2,account);
 			prstmt.setString(3,password);
@@ -82,7 +82,7 @@ public class MySQL {
 	public String getUserName(String account){
 		try{
 			PreparedStatement prstmt = null;
-			prstmt = connection.prepareStatement("SELECT user_name FROM login WHERE user_id = ?");
+			prstmt = connection.prepareStatement("SELECT user_name FROM chessgame.login WHERE user_id = ?");
 			prstmt.setString(1,account);
 			resultset = prstmt.executeQuery();
 			if(resultset.next()) return resultset.getString(1);
