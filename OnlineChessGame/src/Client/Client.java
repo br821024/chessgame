@@ -9,42 +9,40 @@ import java.net.URL;
 import java.util.StringTokenizer;
 
 public class Client {
-	public static void main(String[] args){ 	// Client start at here
+	public static void main(String[] args){
+		//new Client(48763);
 		//new Client("https://gurokami.no-ip.org",48763);
-		new Client(48763);
+		Client client = new Client(48763);
 	}
-	public Client(String hostname,int port){	// connect with URL
+	public Client(String hostname,int port){
 		try {
 			Socket socket = new Socket(InetAddress.getByName(new URL(hostname).getHost()).getHostAddress(),port);
-			ClientThread client = new ClientThread(socket);
-			GUI gui = new GUI(client);
-			client.setGUI(gui);
+			ClientThread controller = new ClientThread(socket);
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); }
 	}
-	public Client(int port){					// use local host
+	public Client(int port){
 		try {
 			Socket socket = new Socket("127.0.0.1",port);
-			ClientThread client = new ClientThread(socket);
-			GUI gui = new GUI(client);
-			client.setGUI(gui);
+			ClientThread controller = new ClientThread(socket);
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); }
 	}
 }
 
-class ClientThread implements Runnable {
+class ClientThread implements Runnable,EndThread {
 	
-	int	status = 0;
-	GUI gui = null;
-	Socket	socket = null;
-	StringTokenizer token = null;
-	InputStream		inputstream = null;
-	OutputStream	outputstream = null;
+	GUI 			gui 	= new GUI(this);
+	Socket			socket 			= null;
+	StringTokenizer token 			= null;
+	InputStream		inputstream 	= null;
+	OutputStream	outputstream 	= null;
 	
-	public ClientThread(Socket Sc){
+	int	status = 0;	// 0 = Connect, 1 = Login, 2 = Waiting, 3 = Playing, 4 = 
+	
+	public ClientThread(Socket sc){
 		try {
-			socket = Sc;
-			inputstream = socket.getInputStream();
-			outputstream = socket.getOutputStream();
+			socket 			= sc;
+			inputstream 	= sc.getInputStream();		// get InputStream
+			outputstream 	= sc.getOutputStream();		// get OutputStream
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); }
 		
 		Thread thread = new Thread(this);
@@ -58,20 +56,26 @@ class ClientThread implements Runnable {
 			String command = token.nextToken();			// [Command]
 			if(command.equals("End")) End();
 			
-			if(status==0){		// state Connected
+			if(status==0){
+				System.out.println("State: Connected");
 				if(command.equals("Success")){ status++; gui.Login(); System.out.println("Login Success!"); }
 			}
-			else if(status==1){	// state Login
+			else if(status==1){
+				System.out.println("State: Login");
 				if(command.equals("Logout!")){ status--; gui.Logout(); }
 				else if(command.equals("Success")){ status++; gui.Wait(); }
 				else if(command.equals("Create")){ gui.Room(command,token); }
 				else if(command.equals("Join")){ gui.Room(command,token); }
+				else if(command.equals("Quit")){ gui.Room(command,token); }
 				else if(command.equals("Room")){ gui.Room(command,token); }
 			}
-			else if(status==2){	// state Waiting
+			else if(status==2){
+				System.out.println("State: Waiting");
 				if(command.equals("Start")){ status++; gui.Play(Integer.parseInt(token.nextToken()));}
+				if(command.equals("Success")){ status--; }
 			}
 			else if(status==3){	// state Playing
+				System.out.println("State: Playing");
 				
 			}
 		}
@@ -80,28 +84,25 @@ class ClientThread implements Runnable {
 		catch (IOException e){ System.out.println("Client: "+ e.toString()); }
 	}
 
-	public void setGUI(GUI gui){
-		this.gui = gui; 
-	}
-	public void send(String message){ // Send message to Server
+	public void send(String message){
 		try {
 			outputstream.write(message.getBytes());
 			System.out.println("Client Send: "+message);
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); status = -1; }
 	}
-	public void End(){ // End this Thread
-		gui.End();
-		status = -1;
-		send("End");
+	public void End(){
+		gui.End();		// End the GUI
+		status = -1;	// End the ClientThread
+		send("End");	// End the ServerThread
 	}
-	private String receive(){ // Receive message from Server
-		String receive = null;
+	private String receive(){
+		String message = null;
 		try {	
 			byte[] buffer = new byte[1000];
-			inputstream.read(buffer); receive = new String(buffer).trim();
-			System.out.println("Client Recv: "+receive);
+			inputstream.read(buffer); message = new String(buffer).trim();
+			System.out.println("Client Recv: "+message);
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); status = -1; }
-		return receive;
+		return message;
 	}
 }
 

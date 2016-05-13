@@ -15,9 +15,10 @@ public class Server {
 	
 	public static void main(String[] args){				// Server Start at here
 		
-		ServerSocket serversocket = null;
-		ServerThread serverthread = null;
+		ServerSocket 	serversocket 	= null;
+		ServerThread 	serverthread 	= null;
 		Server server = new Server();
+		
 		boolean process = true;
 		int port = 48763;
 		
@@ -42,17 +43,16 @@ public class Server {
 			}
 		}
 	}
-	
 	public void initialRoom(ServerThread user){
 		for(int i=0;i<roomlist.size();i++){
 			user.send(roomlist.get(i).getRoomInfo());
 		}
 	}
-	public void updateRoom(int type,String account,String username,int side){	// type 0 = create 1 = join 2 = observer
+	public void updateRoom(String action,String account,String username,int side){
 		String result = "";
-		if(type==0) result = "Create|"+account+"|"+username+"|"+side;
-		else if(type==1) result = "Join|"+account+"|"+username+"|"+side;
-		else if(type==2) result = "Join|"+account+"|"+username;
+		if(action.equals("Create")) result = "Create|"+account+"|"+username+"|"+side;
+		else if(action.equals("Join")) result = "Join|"+account+"|"+username+"|"+side;
+		else if(action.equals("Quit")) result = "Quit|"+account;
 		for(int i=0;i<threadlist.size();i++){
 			if(threadlist.get(i).status==1) threadlist.get(i).send(result);
 		}
@@ -62,7 +62,7 @@ public class Server {
 	}
 	public void addRoom(String account,ServerThread host,String username,int side){
 		roomlist.add(new Room(this,host,account,username,side));
-		updateRoom(0,account,username,side);
+		updateRoom("Create",account,username,side);
 	}
 	public Room getRoom(String account){				// get room from room list
 		Room target = null;
@@ -73,39 +73,41 @@ public class Server {
 	}
 	public void deleteRoom(String account){				// delete room in room list
 		for(int i=0;i<roomlist.size();i++){
-			if(roomlist.get(i).account.equals(account)) roomlist.remove(i);
+			if(roomlist.get(i).account.equals(account)){
+				roomlist.remove(i);
+				updateRoom("Quit",account,"",-1);
+			}
 		}
 	}
 }
 
 class Room {
-	
+
+	private Server 			server 	= null;
+	private ServerThread 	host 	= null;
+	private ServerThread 	player 	= null;
+
 	public int side = -1;	// Side = 0 White = 1 Black = 2 Don't mind
 	public String account = null;
 	
-	private Server server = null;
-	private ServerThread host = null;
-	private ServerThread player = null;
-	
 	public Room(Server server,ServerThread host,String account,String username,int side){ 
-		this.host = host;
-		this.side = side;
-		this.server = server;
-		this.account = account;
+		this.host 		= host;
+		this.side 		= side;
+		this.server 	= server;
+		this.account	= account;
 	}
-	public void join(ServerThread playerthread,String username,int side){	// user join the room
-		int type = 2;	// join as an observer 
+	public void join(ServerThread playerthread,String username,int side){	// user join the room 
 		if(player==null){
 			player = playerthread;
 			if(this.side==2){
 				if(side==2) this.side = (int)Math.random()*100%2;
 				else this.side = 1-side;
 			}
-			type--;		// join as player 2
 			host.send("Start|"+this.side);			// match start
+			player.send("Success");
 			player.send("Start|"+(1-this.side));	// match start
-		}
-		server.updateRoom(type,account,username,(1-this.side));
+			server.updateRoom("Join",account,username,(1-this.side));
+		}		
 	}
 	public String getRoomInfo(){	// get room information to String
 		String result = "Room|"+account+"|"+host.getname()+"|"+side+"|";
@@ -116,14 +118,14 @@ class Room {
 
 class ServerThread implements Runnable {
 	
-	private Server server	= null;
-	private Socket socket	= null;
-	private String account	= null;
-
-	private MySQL database	= null;
-	private StringTokenizer token		= null;
-	private InputStream inputstream		= null;
-	private OutputStream outputstream	= null;
+	private Server 	server		= null;
+	private Socket 	socket		= null;
+	private String 	account		= null;
+	private MySQL 	database	= null;
+	
+	private StringTokenizer token			= null;
+	private InputStream 	inputstream		= null;
+	private OutputStream 	outputstream	= null;
 	
 	public int status;		// Thread status 0=connected 1=log in 2=
 	
@@ -169,7 +171,7 @@ class ServerThread implements Runnable {
 				}
 			}
 			else if(status==2){		// state Waiting
-				
+				if(command.equals("Quit")){ status--; send("Success"); server.deleteRoom(account); }
 			}
 			else if(status==3){		// state Playing
 				
@@ -216,7 +218,6 @@ class ServerThread implements Runnable {
 	}
 	private void Join(String account,String username,int side){
 		server.joinRoom(account,this,username,side);
-		send("Success");
 	}
 	public String getname(){			// get name from database
 		String result = database.getUserName(account);
