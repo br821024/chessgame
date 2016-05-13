@@ -3,9 +3,10 @@ package Server;
 import java.sql.*;
 
 public class MySQL {
-	private Connection connection = null;
-	private Statement statement = null;
-	private ResultSet resultset = null;
+	private Connection 	connection	= null;
+	private Statement 	statement	= null;
+	private ResultSet 	resultset	= null;
+	
 	private String user = "root";
 	private String pass = "root";
 	
@@ -18,6 +19,7 @@ public class MySQL {
 		}
 		catch(ClassNotFoundException e){System.out.println("SQL: "+e.toString());}
 		catch(SQLException e){System.out.println("SQL: "+e.toString());}
+
 	}
 	
 	public void initialize(){
@@ -28,13 +30,13 @@ public class MySQL {
 	private void createDB(){
 		try{
 			statement.executeUpdate("CREATE DATABASE IF NOT EXISTS chessgame");
-		}catch(SQLException e){}
+		}catch(SQLException e){System.out.println("SQL: "+e.toString());}
 	}
 	
 	private void createTable(){
 		try{
 			statement.executeUpdate("CREATE TABLE IF NOT EXISTS chessgame.login(account_id INT(20) UNSIGNED NOT NULL AUTO_INCREMENT,user_id VARCHAR(32) NOT NULL,user_pass VARCHAR(32) NOT NULL ,user_name VARCHAR(32) NOT NULL DEFAULT \"Anonymous\", PRIMARY KEY(account_id) , UNIQUE(user_id));");
-		}catch(SQLException e){}
+		}catch(SQLException e){System.out.println("SQL: "+e.toString());}
 	}
 	
 	public int checkaccount(String account){
