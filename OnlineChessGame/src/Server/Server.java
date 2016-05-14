@@ -57,12 +57,15 @@ public class Server {
 			if(threadlist.get(i).status==1) threadlist.get(i).send(result);
 		}
 	}
-	public void joinRoom(String account,ServerThread user,String username,int side){
-		getRoom(account).join(user,username,side);
+	public Room joinRoom(String account,ServerThread user,String username,int side){
+		Room room = getRoom(account).join(user,username,side);
+		return room;
 	}
-	public void addRoom(String account,ServerThread host,String username,int side){
-		roomlist.add(new Room(this,host,account,username,side));
+	public Room addRoom(String account,ServerThread host,String username,int side){
+		Room room = new Room(this,host,account,username,side);
+		roomlist.add(room);
 		updateRoom("Create",account,username,side);
+		return room;
 	}
 	public Room getRoom(String account){				// get room from room list
 		Room target = null;
@@ -86,7 +89,8 @@ class Room {
 	private Server 			server 	= null;
 	private ServerThread 	host 	= null;
 	private ServerThread 	player 	= null;
-
+	private boolean process = false;
+	
 	public int side = -1;	// Side = 0 White = 1 Black = 2 Don't mind
 	public String account = null;
 	
@@ -96,18 +100,30 @@ class Room {
 		this.server 	= server;
 		this.account	= account;
 	}
-	public void join(ServerThread playerthread,String username,int side){	// user join the room 
+	public Room join(ServerThread playerthread,String username,int side){	// user join the room 
 		if(player==null){
 			player = playerthread;
 			if(this.side==2){
 				if(side==2) this.side = (int)Math.random()*100%2;
 				else this.side = 1-side;
 			}
-			host.send("Start|"+this.side);			// match start
-			player.send("Success");
-			player.send("Start|"+(1-this.side));	// match start
+			start();
 			server.updateRoom("Join",account,username,(1-this.side));
-		}		
+			return this;
+		}
+		return null;
+	}
+	public void send(String message){
+		host.send(message);
+		player.send(message);
+	}
+	public void start(){
+		process = true;
+		host.status++;
+		host.send("Start|"+this.side);			// match start
+		player.status++;
+		player.send("Success");
+		player.send("Start|"+(1-this.side));	// match start
 	}
 	public String getRoomInfo(){	// get room information to String
 		String result = "Room|"+account+"|"+host.getname()+"|"+side+"|";
@@ -122,6 +138,7 @@ class ServerThread implements Runnable {
 	private Socket 	socket		= null;
 	private String 	account		= null;
 	private MySQL 	database	= null;
+	private Room	room		= null;
 	
 	private StringTokenizer token			= null;
 	private InputStream 	inputstream		= null;
@@ -164,17 +181,19 @@ class ServerThread implements Runnable {
 			else if(status==1){		// state Login
 				if(command.equals("Logout")){ status--; send("Logout!"); }
 				else if(command.equals("Create")){ status++;
-					Create(getname(),Integer.parseInt(token.nextToken())); 
+					room = Create(getname(),Integer.parseInt(token.nextToken())); 
 				}
 				else if(command.equals("Join")){ status++; 
-					Join(token.nextToken(),getname(),Integer.parseInt(token.nextToken()));
+					room = Join(token.nextToken(),getname(),Integer.parseInt(token.nextToken()));
 				}
 			}
 			else if(status==2){		// state Waiting
-				if(command.equals("Quit")){ status--; send("Success"); server.deleteRoom(account); }
+				if(command.equals("Quit")){ status--; send("Success"); room = null; server.deleteRoom(account); }
 			}
 			else if(status==3){		// state Playing
-				
+				if(command.equals("Move")){
+					room.send("Move|"+token.nextToken()+"|"+token.nextToken()+"|"+token.nextToken()+"|"+token.nextToken()+"|");
+				}
 			}
 		}
 		
@@ -212,12 +231,14 @@ class ServerThread implements Runnable {
 		}
 		return result;
 	}
-	private void Create(String username,int side){
-		server.addRoom(account,this,username,side);
+	private Room Create(String username,int side){
+		Room room = server.addRoom(account,this,username,side);
 		send("Success");
+		return room;
 	}
-	private void Join(String account,String username,int side){
-		server.joinRoom(account,this,username,side);
+	private Room Join(String account,String username,int side){
+		Room room = server.joinRoom(account,this,username,side);
+		return room;
 	}
 	public String getname(){			// get name from database
 		String result = database.getUserName(account);

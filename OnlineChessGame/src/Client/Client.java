@@ -76,7 +76,11 @@ class ClientThread implements Runnable,EndThread {
 			}
 			else if(status==3){	// state Playing
 				System.out.println("State: Playing");
-				
+				if(command.equals("Move")){ gui.moveChess(	Integer.parseInt(token.nextToken()),
+															Integer.parseInt(token.nextToken()),
+															Integer.parseInt(token.nextToken()),
+															Integer.parseInt(token.nextToken())); }
+				else if(command.equals("")){}
 			}
 		}
 		

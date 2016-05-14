@@ -55,6 +55,9 @@ public class GUI extends JFrame {
 		loginUI.setVisible(true);
 		centerUI.setVisible(false);;
 	}
+	public void moveChess(int px,int py,int x,int y){
+		gameUI.moveChess(px,py,x,y);
+	}
 	public void Play(int Side){
 		int color = 1;
 		if(Side==1) color *= -1;
