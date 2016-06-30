@@ -9,62 +9,78 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPasswordField;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 
 interface TextWindow {	// Windows with TextArea 
 	public String getText(String action);
 }
 
-interface EndThread {
+interface EndThread {	// Thread needs Terminate Operation
 	public void End();
 }
 
 class SendListener implements ActionListener{
 	
-	private ClientThread 	controller	= null;
-	private TextWindow 		textwindow	= null;
+	/* Custom type variables */
+	private ClientThread 	sender	= null;
+	private TextWindow 		window	= null;
 	
+	/* Default type variables */
 	private String 	action 		= "";
 	private String 	arguments 	= "";
 	private boolean setSide  = false;
 	
-	public SendListener(ClientThread controller, String action, TextWindow textwindow){
-		this.controller = controller;
-		this.textwindow = textwindow;
-		this.action 	= action;
+	/* SendListener which needs to read TextField */
+	public SendListener(ClientThread sender, String action, TextWindow window){
+		this.sender = sender;
+		this.window = window;
+		this.action = action;
 	}
-	public SendListener(ClientThread controller, String action, String...args){
-		this.controller = controller;
-		this.action 	= action;
+	/* Basic SendListener */
+	public SendListener(ClientThread sender, String action, String...args){
+		this.sender = sender;
+		this.action = action;
 		
-		if(action.equals("Create")) setSide = true;
+		if(action.equals( "Create" )) {
+			setSide = true;
+		}
 		
-		for(String arg: args){
-			if((action.equals("Join")&&arg.equals("2"))){
+		for(String arg: args) {	// Go through all the arguments
+			if((action.equals( "Join" ) && arg.equals( Constant.RANDOM ))) {
 				setSide = true;
 			}
-			else arguments += arg.trim() + "|";
+			else { // Combine all the arguments
+				arguments += arg.trim() + Constant.DELIMITER;
+			}
 		}
 	}
 	
 	public void actionPerformed(ActionEvent e) {
-		if(setSide)
+		if(setSide == true) { // Set Side before Sending
 			new setDialog(this);
-		else
+		}
+		else { // goto Sending process 
 			sendMessage();
+		}
 	}
 	public void sendMessage(){
-		String message = action+"|";
+		/* Message Format: Action|args1|args2|... */
+		String message = action + Constant.DELIMITER;
 		
-		if(textwindow!=null)
-			message += textwindow.getText(action);
-		else
+		if(window != null) { // Check to Avoid Null Pointer
+			message += window.getText(action);
+		}
+		else{
 			message += arguments;
+		}
 		
-		controller.send(message);
+		/* Thread send Message */
+		sender.send(message);
 	}
-	public void addArguments(String arg){
-		arguments += arg.trim() + "|";
+	public void addArguments(String arg){ // add new arguments 
+		arguments += arg.trim() + Constant.DELIMITER;
 	}
 }
 
@@ -73,46 +89,57 @@ class setDialog extends basicDialog {
 	private SendListener sendListener = null;
 
 	public setDialog(SendListener sendListener){
-		super("Setting",125,165,146,180);
-		this.sendListener = sendListener;
+		super("Setting",125,165,146,180);	// set Title/X/Y/W/H
 		addWindowListener(new CloseListener(this));
-		for(int i=0;i<3;i++) add(new setButton(this,i));
-		setVisible(true);
+		this.setVisible(true);
+		
+		this.sendListener = sendListener;	// set sendListener
+		
+		/* add Button */
+		add(new setButton(this,Constant.WHITE_SIDE));
+		add(new setButton(this,Constant.BLACK_SIDE));
+		add(new setButton(this,Constant.RANDOM)); 
 	}
 	
 	public void setSide(int side){
+		/* add side arguments into the message before sending */
 		sendListener.addArguments(String.valueOf(side));
+		sendMessage();	// send the message
+	}
+	public void sendMessage(){
 		sendListener.sendMessage();
 	}
 	
 	class setButton extends JButton {
-		public setButton(setDialog dialog,int side) { // Side = 0 White = 1 Black = 2 Don't mind
+		public setButton(setDialog dialog,int side) {
 			switch(side){
-				case 0:
+				case Constant.WHITE_SIDE:
+					setBounds(15,15,100,30);
 					setText("¥Õ´Ñ");
 					break;
-				case 1:
+				case Constant.BLACK_SIDE:
+					setBounds(15,55,100,30);
 					setText("¶Â´Ñ");
 					break;
-				case 2:
+				case Constant.RANDOM:
+					setBounds(15,95,100,30);
 					setText("ÀH·N");
-					break;
-				default:
-					setText("Error");
 			}
 			addActionListener(new setListener(dialog,side));
-			setBounds(15,15+side*40,100,30);
 		}
 	}
 	
 	class setListener implements ActionListener{
 		
+		/* Custom type variables */
 		setDialog dialog = null;
-		int side = -1;
+		
+		/* Default type variables */
+		int side = Constant.RANDOM;
 		
 		public setListener(setDialog dialog,int side) {
-			this.dialog = dialog;
-			this.side = side;
+			this.dialog	= dialog;
+			this.side	= side;
 		}
 		
 		public void actionPerformed(ActionEvent arg0) {
@@ -122,7 +149,51 @@ class setDialog extends basicDialog {
 	}
 }
 
-class basicFrame extends JFrame {
+class CloseListener implements WindowListener{
+	
+	/* Custom type variables */
+	private EndThread	 	controller;
+	private JDialog 		dialog;
+	private JFrame			frame;
+
+	/* Constructor */
+	public CloseListener(){
+		controller	= null;
+		dialog		= null;
+		frame		= null;
+	}
+	public CloseListener(EndThread controller){
+		this();
+		this.controller = controller;
+	}
+	public CloseListener(JDialog dialog){
+		this();
+		this.dialog = dialog;
+	}
+	public CloseListener(JFrame frame){
+		this();
+		this.frame = frame;
+	}
+
+	public void windowClosing(WindowEvent e) { // Trigger when clicking [x]
+		if(controller!=null){
+			if(controller instanceof Loading) ((Loading) controller).Quit();
+			controller.End();
+		}
+		else if(dialog!=null) dialog.dispose();
+		else if(frame!=null) frame.dispose();
+		else System.exit(0);
+	}
+	
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
+
+class basicFrame extends JFrame {		// predefined JFrame
 	public basicFrame(String text,int x,int y,int w,int h){
 		setTitle(text);
 		setLocation(x,y);
@@ -132,7 +203,7 @@ class basicFrame extends JFrame {
 	}
 }
 
-class basicDialog extends JDialog {
+class basicDialog extends JDialog {		// predefined JDialog
 	public basicDialog(String text,int x,int y,int w,int h){
 		setTitle(text);
 		setLocation(x,y);
@@ -159,46 +230,17 @@ class basicButton extends JButton {		// predefined JButton
 	}
 }
 
-class inputTextArea extends JTextArea {	// predefined JTextArea
-	public inputTextArea (int x,int y,int w,int h){
-		setLineWrap(false);
+class inputTextField extends JTextField {	// predefined JTextArea
+	public inputTextField (int x,int y,int w,int h){
 		setBounds(x,y,w,h);
 		setVisible(true);
 	}
 }
 
-class CloseListener implements WindowListener{
-	
-	private EndThread	 	controller 	= null;
-	private JDialog 		dialog 		= null;
-	private JFrame			frame		= null;
-	
-	public CloseListener(EndThread controller){
-		this.controller = controller;
+class passwordField extends JPasswordField { // predefined JPasswordField
+	public passwordField (char display, int x, int y, int w, int h){
+		this.setEchoChar(display);
+		setBounds(x,y,w,h);
+		setVisible(true);
 	}
-	public CloseListener(JDialog dialog){
-		this.dialog = dialog;
-	}
-	public CloseListener(JFrame frame){
-		this.frame = frame;
-	}
-	public CloseListener(){
-	}
-	
-	public void windowClosing(WindowEvent e) { // Trigger by clicking [x]
-		if(controller!=null){
-			if(controller instanceof Loading) ((Loading) controller).Quit();
-			controller.End();
-		}
-		else if(dialog!=null) dialog.dispose();
-		else if(frame!=null) frame.dispose();
-		else System.exit(0);
-	}
-	
-	public void windowActivated(WindowEvent e) {}
-	public void windowClosed(WindowEvent e) {}
-	public void windowDeactivated(WindowEvent e) {}
-	public void windowDeiconified(WindowEvent e) {}
-	public void windowIconified(WindowEvent e) {}
-	public void windowOpened(WindowEvent e) {}
 }
