@@ -3,23 +3,25 @@ package Server;
 import java.sql.*;
 
 public class MySQL {
+	
+	/* Default type variable */
 	private Connection 	connection	= null;
 	private Statement 	statement	= null;
 	private ResultSet 	resultset	= null;
-	
+
 	private String user = "root";
 	private String pass = "root";
-	
+
+	/* Constructor */
 	public MySQL(){
 		try{
 			Class.forName("com.mysql.jdbc.Driver");
-			connection = DriverManager.getConnection("jdbc:mysql://localhost/?autoReconnect=true&useSSL=True",user,pass);
+			connection = DriverManager.getConnection("jdbc:mysql://localhost/?autoReconnect=true&useSSL=True", user, pass);
 			statement = connection.createStatement();
 			System.out.println("Connected with MySQL Server!");
 		}
 		catch(ClassNotFoundException e){System.out.println("SQL: "+e.toString());}
 		catch(SQLException e){System.out.println("SQL: "+e.toString());}
-
 	}
 	
 	public void initialize(){

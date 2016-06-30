@@ -9,18 +9,21 @@ import java.net.URL;
 import java.util.StringTokenizer;
 
 public class Client {
+	
 	public static void main(String[] args){
 		//new Client(48763);
 		//new Client("https://gurokami.no-ip.org",48763);
 		Client client = new Client(48763);
 	}
-	public Client(String hostname,int port){
+	
+	/* Constructor */
+	public Client(String hostname,int port){	// use hostname to connect
 		try {
 			Socket socket = new Socket(InetAddress.getByName(new URL(hostname).getHost()).getHostAddress(),port);
 			ClientThread controller = new ClientThread(socket);
 		} catch (IOException e){ System.out.println("Client: "+ e.toString()); }
 	}
-	public Client(int port){
+	public Client(int port){					// use local server
 		try {
 			Socket socket = new Socket("127.0.0.1",port);
 			ClientThread controller = new ClientThread(socket);
@@ -30,13 +33,30 @@ public class Client {
 
 class ClientThread implements Runnable,EndThread {
 	
-	GUI 			gui 	= new GUI(this);
-	Socket			socket 			= null;
-	StringTokenizer token 			= null;
-	InputStream		inputstream 	= null;
-	OutputStream	outputstream 	= null;
+	/* Custom type variable */
+	private GUI 			gui 	= new GUI(this);
 	
-	int	status = 0;	// 0 = Connect, 1 = Login, 2 = Waiting, 3 = Playing, 4 = 
+	/* Default type variable */
+	private Socket			socket 			= null;
+	private StringTokenizer token 			= null;
+	private InputStream		inputstream 	= null;
+	private OutputStream	outputstream 	= null;
+	
+	public State state = State.CONNECT;
+	
+	public enum State {
+		
+		/* Costum type variable */
+		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
+		
+		/* Default type variable */
+		private int value;
+		
+		/* Constructor */
+		private State(int value){
+			this.value = value;
+		}
+	}
 	
 	public ClientThread(Socket sc){
 		try {
@@ -50,37 +70,67 @@ class ClientThread implements Runnable,EndThread {
 	}
 	
 	public void run() {
-		while(status!=-1){
-			String receive = receive();					// Receive message from Server
-			token = new StringTokenizer(receive,"|");	// Format the message [Command]|[arg0]|[arg1]|[arg2]...
-			String command = token.nextToken();			// [Command]
-			if(command.equals("End")) End();
+		while(state != State.END){
 			
-			if(status==0){
-				System.out.println("State: Connected");
-				if(command.equals("Success")){ status++; gui.Login(); System.out.println("Login Success!"); }
+			/* Recive messgae from Server */
+			String receive = receive();
+			
+			/* Format the message */
+			token = new StringTokenizer(receive, Constant.DELIMITER);
+			String command = token.nextToken();			// read Server's command
+			
+			if(command.equals("End")){					// handle End command
+				End();
 			}
-			else if(status==1){
+			
+			if(state == State.CONNECT){
+				
+				System.out.println("State: Connected");
+
+				if(command.equals("Success")){
+					
+					System.out.println("Login Success!");
+					
+					setState(State.LOGIN);				// State Changed
+				}
+			}
+			else if(state == State.LOGIN){
+				
 				System.out.println("State: Login");
-				if(command.equals("Logout!")){ status--; gui.Logout(); }
-				else if(command.equals("Success")){ status++; gui.Wait(); }
+				
+				if(command.equals("Done")){
+					setState(State.END);
+				} /* Room command handle by GUI */
 				else if(command.equals("Create")){ gui.Room(command,token); }
 				else if(command.equals("Join")){ gui.Room(command,token); }
 				else if(command.equals("Quit")){ gui.Room(command,token); }
 				else if(command.equals("Room")){ gui.Room(command,token); }
+				else if(command.equals("Success")){
+					setState(State.WAITING);
+				}
 			}
-			else if(status==2){
+			else if(state == State.WAITING){
+				
 				System.out.println("State: Waiting");
-				if(command.equals("Start")){ status++; gui.Play(Integer.parseInt(token.nextToken()));}
-				if(command.equals("Success")){ status--; }
+				
+				if(command.equals("Done")){
+					setState(State.LOGIN);
+				}
+				else if(command.equals("Start")){
+					setState(State.PLAYING, Integer.parseInt(token.nextToken()));
+				}
 			}
-			else if(status==3){	// state Playing
+			else if(state == State.PLAYING){
 				System.out.println("State: Playing");
-				if(command.equals("Move")){ gui.moveChess(	Integer.parseInt(token.nextToken()),
-															Integer.parseInt(token.nextToken()),
-															Integer.parseInt(token.nextToken()),
-															Integer.parseInt(token.nextToken())); }
-				else if(command.equals("")){}
+				if(command.equals("Done")){
+					setState(State.LOGIN);
+				}
+				else if(command.equals("Move")){
+					gui.moveChess(	Integer.parseInt(token.nextToken()),
+									Integer.parseInt(token.nextToken()),
+									Integer.parseInt(token.nextToken()),
+									Integer.parseInt(token.nextToken()));
+				}
 			}
 		}
 		
@@ -88,25 +138,51 @@ class ClientThread implements Runnable,EndThread {
 		catch (IOException e){ System.out.println("Client: "+ e.toString()); }
 	}
 
-	public void send(String message){
+	public void setState(State nextstate, int... args){	// switch from state to nextstate
+		
+		/* notice GUI to hide/show windows */
+		switch(nextstate){
+			case END:
+				gui.setState(state.value, nextstate.value);
+				send("End");
+				break;
+			case CONNECT:
+				gui.setState(state.value, nextstate.value);
+				break;
+			case LOGIN:
+				gui.setState(state.value, nextstate.value);
+				break;
+			case WAITING:
+				gui.setState(state.value, nextstate.value);
+				break;
+			case PLAYING:
+				gui.setState(state.value, nextstate.value, args[0]);
+				break;
+			default:
+				gui.setState(state.value, nextstate.value);
+		}
+		
+		/* Switch State */
+		state = nextstate;
+	}
+	public void send(String message){		// send Message to Server
 		try {
 			outputstream.write(message.getBytes());
 			System.out.println("Client Send: "+message);
-		} catch (IOException e){ System.out.println("Client: "+ e.toString()); status = -1; }
+		} catch (IOException e){ System.out.println("Client: "+ e.toString()); state = State.END; }
 	}
-	public void End(){
-		gui.End();		// End the GUI
-		status = -1;	// End the ClientThread
-		send("End");	// End the ServerThread
-	}
-	private String receive(){
+	private String receive(){				// recieve Message from Server
 		String message = null;
 		try {	
 			byte[] buffer = new byte[1000];
 			inputstream.read(buffer); message = new String(buffer).trim();
 			System.out.println("Client Recv: "+message);
-		} catch (IOException e){ System.out.println("Client: "+ e.toString()); status = -1; }
+		} catch (IOException e){ System.out.println("Client: "+ e.toString()); state = State.END; }
 		return message;
+	}
+
+	public void End() {
+		setState(State.END);
 	}
 }
 

@@ -10,8 +10,23 @@ import java.util.StringTokenizer;
 
 public class Server {
 	
+	/* Default type variable */
 	private ArrayList<ServerThread> threadlist = new ArrayList<ServerThread>();
 	private ArrayList<Room>	roomlist = new ArrayList<Room>();
+	
+	public enum State {
+		
+		/* Costum type variable */
+		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
+		
+		/* Default type variable */
+		protected int value;
+		
+		/* Constructor */
+		private State(int value){
+			this.value = value;
+		}
+	}
 	
 	public static void main(String[] args){				// Server Start at here
 		
@@ -37,48 +52,74 @@ public class Server {
 	}
 	public void endThread(){							// remove thread from thread list
 		for(int i=0;i<threadlist.size();i++){
-			if(threadlist.get(i).status==-1){
+			if(threadlist.get(i).state.value == State.END.value){
 				threadlist.remove(i);
 				System.out.println("Remove "+i+"th Thread in "+threadlist.size()+" Thread");
 			}
 		}
 	}
+	public boolean isOnline(String account){
+		boolean result = false;
+		for(int i=0;i<threadlist.size();i++){
+			if(threadlist.get(i).equal(account)){
+				result = true;
+			}
+		}
+		return result;
+	}
 	public void initialRoom(ServerThread user){
-		for(int i=0;i<roomlist.size();i++){
+		for(int i=0; i<roomlist.size(); i++){
 			user.send(roomlist.get(i).getRoomInfo());
 		}
 	}
-	public void updateRoom(String action,String account,String username,int side){
+	public void updateRoom(String action, String account, String username, int side){
 		String result = "";
-		if(action.equals("Create")) result = "Create|"+account+"|"+username+"|"+side;
-		else if(action.equals("Join")) result = "Join|"+account+"|"+username+"|"+side;
-		else if(action.equals("Quit")) result = "Quit|"+account;
+		if(action.equals("Create")){
+			result = "Create"+Constant.DELIMITER+
+					  account+Constant.DELIMITER+
+					 username+Constant.DELIMITER+
+					 	 side;
+		}
+		else if(action.equals("Join")){
+			result = "Join"+Constant.DELIMITER+
+					account+Constant.DELIMITER+
+				   username+Constant.DELIMITER+
+				       side;
+		}
+		else if(action.equals("Quit")){
+			result = "Quit"+Constant.DELIMITER+
+					account+Constant.DELIMITER+
+					   side;
+		}
 		for(int i=0;i<threadlist.size();i++){
-			if(threadlist.get(i).status==1) threadlist.get(i).send(result);
+			if(threadlist.get(i).state.value == State.LOGIN.value){
+				threadlist.get(i).send(result);
+			}
 		}
 	}
-	public Room joinRoom(String account,ServerThread user,String username,int side){
-		Room room = getRoom(account).join(user,username,side);
+	public Room joinRoom(String account, ServerThread user, String username, int side){
+		Room room = getRoom(account).join(user, username, side);
 		return room;
 	}
-	public Room addRoom(String account,ServerThread host,String username,int side){
-		Room room = new Room(this,host,account,username,side);
+	public Room addRoom(String account, ServerThread host, String username, int side){
+		Room room = new Room(this, host, account, username, side);
 		roomlist.add(room);
-		updateRoom("Create",account,username,side);
+		updateRoom("Create", account, username, side);
 		return room;
 	}
 	public Room getRoom(String account){				// get room from room list
 		Room target = null;
 		for(int i=0;i<roomlist.size();i++){
-			if(roomlist.get(i).account.equals(account)) target = roomlist.get(i);
+			if(roomlist.get(i).account.equals(account)){
+				target = roomlist.get(i);
+			}
 		}
 		return target;
 	}
-	public void deleteRoom(String account){				// delete room in room list
+	public void deleteRoom(String account){
 		for(int i=0;i<roomlist.size();i++){
 			if(roomlist.get(i).account.equals(account)){
 				roomlist.remove(i);
-				updateRoom("Quit",account,"",-1);
 			}
 		}
 	}
@@ -86,69 +127,115 @@ public class Server {
 
 class Room {
 
+	/* Custom type variable */
 	private Server 			server 	= null;
 	private ServerThread 	host 	= null;
 	private ServerThread 	player 	= null;
-	private boolean process = false;
 	
-	public int side = -1;	// Side = 0 White = 1 Black = 2 Don't mind
+	/* Default type variable */
+	private boolean process = false;
+	public int side = Constant.OBSERVER;
 	public String account = null;
 	
-	public Room(Server server,ServerThread host,String account,String username,int side){ 
+	public enum State {
+		
+		/* Costum type variable */
+		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
+		
+		/* Default type variable */
+		protected int value;
+		
+		/* Constructor */
+		private State(int value){
+			this.value = value;
+		}
+	}
+	
+	public Room(Server server, ServerThread host, String account, String username, int side){ 
 		this.host 		= host;
 		this.side 		= side;
 		this.server 	= server;
 		this.account	= account;
 	}
-	public Room join(ServerThread playerthread,String username,int side){	// user join the room 
+	public Room join(ServerThread playerthread, String username, int side){	// user join the room 
 		if(player==null){
 			player = playerthread;
-			if(this.side==2){
-				if(side==2) this.side = (int)Math.random()*100%2;
-				else this.side = 1-side;
+			if(this.side == Constant.RANDOM){
+				if(side == Constant.RANDOM){
+					this.side = (int)Math.random()*100%2;
+				}
+				else{
+					this.side = side*(-1);
+				}
 			}
 			start();
-			server.updateRoom("Join",account,username,(1-this.side));
+			server.updateRoom("Join",account,username,this.side*(-1));
 			return this;
 		}
 		return null;
 	}
-	public void send(String message){
+	public void quit(ServerThread user){
+		if(host.equals(user)){
+			server.updateRoom("Quit",account,null,this.side);
+			server.deleteRoom(account);
+		}
+		else if(player.equals(user)) server.updateRoom("Quit",account,null,this.side*(-1));
+		else server.updateRoom("Quit",account,null,-1); // observer quit #
+	}
+	public void broadcast(String message){
 		host.send(message);
 		player.send(message);
 	}
 	public void start(){
 		process = true;
-		host.status++;
-		host.send("Start|"+this.side);			// match start
-		player.status++;
+		host.setState(State.PLAYING.value);
+		host.send("Start"+Constant.DELIMITER+this.side);			// match start
+		player.setState(State.PLAYING.value);
 		player.send("Success");
-		player.send("Start|"+(1-this.side));	// match start
+		player.send("Start"+Constant.DELIMITER+this.side*(-1));		// match start
 	}
 	public String getRoomInfo(){	// get room information to String
-		String result = "Room|"+account+"|"+host.getname()+"|"+side+"|";
-		if(player!=null) result = result+player.getname();
+		String result = "Room"+Constant.DELIMITER+account+Constant.DELIMITER+host.getname()+Constant.DELIMITER+side;
+		if(player != null){
+			result = result+player.getname();
+		}
 		return result;
 	}
 }
 
 class ServerThread implements Runnable {
 	
+	/* Custom type variable */
 	private Server 	server		= null;
 	private Socket 	socket		= null;
 	private String 	account		= null;
 	private MySQL 	database	= null;
 	private Room	room		= null;
 	
+	/* Default type variable */
 	private StringTokenizer token			= null;
 	private InputStream 	inputstream		= null;
 	private OutputStream 	outputstream	= null;
 	
-	public int status;		// Thread status 0=connected 1=log in 2=
+	public State state = State.CONNECT;
 	
+	public enum State {
+		
+		/* Costum type variable */
+		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
+		
+		/* Default type variable */
+		protected int value;
+		
+		/* Constructor */
+		private State(int value){
+			this.value = value;
+		}
+	}
+	
+	/* Constructor */
 	public ServerThread(Socket sc,Server sv) {
 		try {
-			status = 0;
 			socket = sc;
 			server = sv;
 			account = "Guest";
@@ -162,37 +249,74 @@ class ServerThread implements Runnable {
 	}
 	
 	public void run() {
-		while(status!=-1){
+		while(state != State.END){
 			Boolean result = false;
-			String receive = receive();					// Receive message from Client [ Blocked ]
-			token = new StringTokenizer(receive,"|");	// Format the message [Command]|[arg0]|[arg1]|[arg2]...
-			String command = token.nextToken();			// [Command]
-
-			if(command.equals("End")) End();			// Client Side Close Program
+			
+			/* Receive message from Client */
+			String receive = receive();
+			
+			/* Format the message */
+			token = new StringTokenizer(receive,Constant.DELIMITER);
+			
+			String command = token.nextToken();		// read Command
+			if(command.equals("End")){				// handle End Command
+				setState(State.END);
+			}
 			else System.out.println("[Command] = "+ command);
 	
-			if(status==0){			// state Connected
-				account = token.nextToken();
-				if(command.equals("Login")) result = Login();
-				else if(command.equals("Register")) result = Register();
+			if(state == State.CONNECT){				// state Connected
 				
-				if(result==true){ send("Success"); status++; result=false; server.initialRoom(this); }
-			}
-			else if(status==1){		// state Login
-				if(command.equals("Logout")){ status--; send("Logout!"); }
-				else if(command.equals("Create")){ status++;
-					room = Create(getname(),Integer.parseInt(token.nextToken())); 
+				account = token.nextToken();		// get account
+				
+				if(command.equals("Login")){
+					result = Login();
 				}
-				else if(command.equals("Join")){ status++; 
-					room = Join(token.nextToken(),getname(),Integer.parseInt(token.nextToken()));
+				else if(command.equals("Register")){
+					result = Register();
+				}
+				
+				if(result == true){
+					setState(State.LOGIN);
+					send("Success");
+					result = false;
+					server.initialRoom(this);
 				}
 			}
-			else if(status==2){		// state Waiting
-				if(command.equals("Quit")){ status--; send("Success"); room = null; server.deleteRoom(account); }
+			else if(state == State.LOGIN){			// state Login
+				if(command.equals("Logout")){
+					setState(State.CONNECT);
+					send("Done");
+				}
+				else if(command.equals("Create")){
+					setState(State.WAITING);
+					room = createRoom(getname(), Integer.parseInt(token.nextToken())); 
+				}
+				else if(command.equals("Join")){
+					setState(State.WAITING);
+					room = joinRoom(token.nextToken(), getname(), Integer.parseInt(token.nextToken()));
+				}
 			}
-			else if(status==3){		// state Playing
-				if(command.equals("Move")){
-					room.send("Move|"+token.nextToken()+"|"+token.nextToken()+"|"+token.nextToken()+"|"+token.nextToken()+"|");
+			else if(state == State.WAITING){		// state Waiting
+				if(command.equals("Quit")){
+					setState(State.LOGIN);
+					send("Done");
+					room = null;
+					quitRoom();
+				}
+			}
+			else if(state == State.PLAYING){		// state Playing
+				if(command.equals("Quit")){
+					setState(State.LOGIN);
+					send("Done");
+					room = null;
+					quitRoom();
+				}
+				else if(command.equals("Move")){
+					room.broadcast("Move"+Constant.DELIMITER+
+						token.nextToken()+Constant.DELIMITER+
+						token.nextToken()+Constant.DELIMITER+
+						token.nextToken()+Constant.DELIMITER+
+						token.nextToken());
 				}
 			}
 		}
@@ -203,9 +327,40 @@ class ServerThread implements Runnable {
 		server.endThread();
 	}
 	
+	public boolean equal(String account){
+		boolean result = false;
+		if(this.account.equals(account)){
+			result = true;
+		}
+		return result;
+	}
+	public void setState(int value){
+		setState(getState(value));
+	}
+	public void setState(State nextstate){	// switch from state to nextstate
+		
+		/* notice GUI to hide/show windows */
+		switch(nextstate){
+			case END:
+				database.End();
+				send("End");
+				break;
+		}
+		
+		/* Switch State */
+		state = nextstate;
+	}
+	private State getState(int value){
+		State result = null;
+		for(State state: State.values()){
+			if(state.value == value){
+				result = state;
+			}
+		}
+		return result;
+	}
 	private void End(){ 		// End this Thread
 		database.End();
-		status = -1;
 		send("End");
 	}
 	private String receive(){	// Receive message from Client
@@ -214,31 +369,41 @@ class ServerThread implements Runnable {
 			byte[] buffer = new byte[1000];
 			inputstream.read(buffer); receive = new String(buffer).trim();
 			System.out.println("Server Recv: "+ receive);
-		} catch (IOException e){ System.out.println("Server: "+ e.toString()); status = -1; }
+		} catch (IOException e){ System.out.println("Server: "+ e.toString()); setState(State.END); }
 		return receive;
 	}
 	private boolean Login() {	// Login with User_account and User_password
-		Boolean result = false;
+		boolean result = false;
 		if(database.checkaccount(account)>0){
-			if(database.login(account,token.nextToken())) result = true;
+			if(database.login(account,token.nextToken())){
+				if(!server.isOnline(account)){
+					result = true;
+				}
+			}
 		}
 		return result;
 	}
 	private boolean Register(){ // Register with User_account and User_password
-		Boolean result = false;
+		boolean result = false;
 		if(database.checkaccount(account)==0){
-			if(database.register(account,token.nextToken())) result = true; 
+			if(database.register(account,token.nextToken())){
+				result = true;
+			}
 		}
 		return result;
 	}
-	private Room Create(String username,int side){
+	private Room createRoom(String username,int side){
 		Room room = server.addRoom(account,this,username,side);
 		send("Success");
 		return room;
 	}
-	private Room Join(String account,String username,int side){
+	private Room joinRoom(String account,String username,int side){
 		Room room = server.joinRoom(account,this,username,side);
 		return room;
+	}
+	private void quitRoom(){
+		Room room = server.getRoom(account);
+		if(room!=null) room.quit(this);		
 	}
 	public String getname(){			// get name from database
 		String result = database.getUserName(account);
@@ -247,6 +412,6 @@ class ServerThread implements Runnable {
 	public void send(String message){	// Send message to Client
 		System.out.println("Server Send: "+ message);
 		try { outputstream.write(message.getBytes()); }
-		catch (IOException e){ System.out.println("Server: "+ e.toString()); status = -1; }
+		catch (IOException e){ System.out.println("Server: "+ e.toString()); setState(State.END); }
 	}
 }
