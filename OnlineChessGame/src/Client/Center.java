@@ -124,7 +124,7 @@ class roomButton extends JButton {
 	public int countplayer(){
 		return player.size();
 	}
-	public void join(String name,int side){
+	public synchronized void join(String name,int side){
 		/* set the random host to the opposite side of join player */
 		if(player.containsKey(Constant.RANDOM)){
 			String hostname = player.remove(Constant.RANDOM);

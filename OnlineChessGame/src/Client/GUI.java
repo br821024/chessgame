@@ -11,21 +11,7 @@ public class GUI extends JFrame {
 	private Center 			centerUI 	= null;
 	private ChessGame		gameUI		= null;
 	private Loading			loadUI		= null;
-	
-	public enum State {
-		
-		/* Costum type variable */
-		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
-		
-		/* Default type variable */
-		private int value;
-		
-		/* Constructor */
-		private State(int value){
-			this.value = value;
-		}
-	}
-	
+
 	public GUI(ClientThread controller){
 		
 		this.controller = controller;
@@ -68,16 +54,15 @@ public class GUI extends JFrame {
 			}
 		}
 	}
+	public void Endgame(int side){
+		gameUI.Endgame(side);
+	}
 	public void moveChess(int px,int py,int x,int y){
 		gameUI.moveChess(px,py,x,y);
 	}
-	public void setState(int previous, int next, int... args){	// update GUI to fit each State
+	public void setState(State prestate, State nextstate, int... args){	// update GUI to fit each State
 		
-		/* Custom type variable */
-		State prestate = getState(previous);
-		State nextstate = getState(next);
-		
-		/* Hide Window */
+		/* Handle previos State */
 		if(prestate != null){
 			switch(prestate){
 				case CONNECT:
@@ -90,14 +75,15 @@ public class GUI extends JFrame {
 					loadUI.End();
 					break;
 				case PLAYING:
+					gameUI.setVisible(false);
 			}
 		}
 
-		/* Show Window */
+		/* Handle next State */
 		if(nextstate != null){
 			switch(nextstate){
 				case END:
-					End(previous);
+					End(prestate);
 					break;
 				case CONNECT:
 					loginUI.setVisible(true);
@@ -113,30 +99,19 @@ public class GUI extends JFrame {
 			}
 		}
 	}
-	private State getState(int value){							// get State from value
-		State result = null;
-		for(State state: State.values()){
-			if(state.value == value){
-				result = state;
-			}
-		}
-		return result;
-	}
 	private void Play(int Side){
-		int color = 1;
-		if(Side == 1) color *= -1;
 		centerUI.setVisible(false);
-		gameUI.initialize(color);
+		gameUI.initialize(Side);
 		gameUI.setVisible(true);
 	}
-	private void End(int statevalue)
+	private void End(State state)
 	{
 		loginUI.dispose();
 		centerUI.dispose();
-		if(statevalue == State.WAITING.value){
+		if(state == State.WAITING){
 			loadUI.End();
 		}
-		else if(statevalue == State.PLAYING.value){
+		else if(state == State.PLAYING){
 			gameUI.dispose();
 		}
 	}	
