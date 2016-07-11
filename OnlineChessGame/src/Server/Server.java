@@ -14,20 +14,6 @@ public class Server {
 	private ArrayList<ServerThread> threadlist = new ArrayList<ServerThread>();
 	private ArrayList<Room>	roomlist = new ArrayList<Room>();
 	
-	public enum State {
-		
-		/* Costum type variable */
-		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
-		
-		/* Default type variable */
-		protected int value;
-		
-		/* Constructor */
-		private State(int value){
-			this.value = value;
-		}
-	}
-	
 	public static void main(String[] args){				// Server Start at here
 		
 		ServerSocket 	serversocket 	= null;
@@ -58,10 +44,10 @@ public class Server {
 			}
 		}
 	}
-	public boolean isOnline(String account){
+	public boolean isOnline(String account){			// check if the user is online
 		boolean result = false;
 		for(int i=0;i<threadlist.size();i++){
-			if(threadlist.get(i).equal(account)){
+			if(threadlist.get(i).equal(account) && threadlist.get(i).state != State.CONNECT){
 				result = true;
 			}
 		}
@@ -97,14 +83,14 @@ public class Server {
 			}
 		}
 	}
-	public Room joinRoom(String account, ServerThread user, String username, int side){
-		Room room = getRoom(account).join(user, username, side);
+	public Room joinRoom(String host_account, ServerThread user, int side){
+		Room room = getRoom(host_account).join(user, side);
 		return room;
 	}
-	public Room addRoom(String account, ServerThread host, String username, int side){
-		Room room = new Room(this, host, account, username, side);
+	public Room addRoom(ServerThread host, int side){
+		Room room = new Room(this, host, side);
 		roomlist.add(room);
-		updateRoom("Create", account, username, side);
+		updateRoom("Create", host.getaccount(), host.getname(), side);
 		return room;
 	}
 	public Room getRoom(String account){				// get room from room list
@@ -128,51 +114,91 @@ public class Server {
 class Room {
 
 	/* Custom type variable */
-	private Server 			server 	= null;
-	private ServerThread 	host 	= null;
-	private ServerThread 	player 	= null;
-	
+	private MySQL			database	= null;
+	private Server 			server 		= null;
+	private ServerThread 	host 		= null;
+	private ServerThread 	player 		= null;
+
 	/* Default type variable */
+	private ArrayList<ServerThread> observer = new ArrayList<ServerThread>();
 	private boolean process = false;
-	public int side = Constant.OBSERVER;
-	public String account = null;
+	private String 	record 	= "";
 	
-	public enum State {
-		
-		/* Costum type variable */
-		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
-		
-		/* Default type variable */
-		protected int value;
-		
-		/* Constructor */
-		private State(int value){
-			this.value = value;
-		}
-	}
+	public int 		side 	= Constant.OBSERVER;
+	public String 	account = null;
 	
-	public Room(Server server, ServerThread host, String account, String username, int side){ 
-		this.host 		= host;
+	public Room(Server server, ServerThread hostthread, int side){ 
+		database		= new MySQL();
+		this.host 		= hostthread;
 		this.side 		= side;
 		this.server 	= server;
-		this.account	= account;
+		this.account	= host.getaccount();
 	}
-	public Room join(ServerThread playerthread, String username, int side){	// user join the room 
-		if(player==null){
+	public synchronized Room join(ServerThread playerthread, int side){	// user join the room 
+		if(player == null){
 			player = playerthread;
-			if(this.side == Constant.RANDOM){
-				if(side == Constant.RANDOM){
-					this.side = (int)Math.random()*100%2;
+			/* Case: Random */
+			if(this.side == Constant.RANDOM){				// host choose Random side
+				if(side == Constant.RANDOM){				// player choose Random too
+					this.side = (int)Math.random()*100%2;	// get a random side 
 				}
-				else{
-					this.side = side*(-1);
+				else{										// player pick up a side
+					this.side = side*(-1);					// host become the opposite side
 				}
 			}
+			process = true;
+			host.setState(State.PLAYING);
+			player.send("Success");
+			player.setState(State.PLAYING);
 			start();
-			server.updateRoom("Join",account,username,this.side*(-1));
+			server.updateRoom("Join",account,playerthread.getname(),this.side*(-1));
 			return this;
 		}
+		else{
+			observer.add(playerthread);
+			playerthread.send("Success");
+			playerthread.send("Start"+Constant.DELIMITER+Constant.OBSERVER);
+			System.out.println(record);
+			for(int i=0;i<record.length();i=i+4){
+				
+				try { Thread.sleep(150); }
+				catch (InterruptedException e) { e.printStackTrace(); }
+				
+				int y = 0;
+				if((i+4)>record.length()){
+					y = Integer.parseInt(record.substring(i+3));
+				}
+				else{
+					y = Integer.parseInt(record.substring(i+3,i+4));
+				}
+				playerthread.send("Move"+Constant.DELIMITER+Integer.parseInt(record.substring(i,i+1))
+										+Constant.DELIMITER+Integer.parseInt(record.substring(i+1,i+2))
+										+Constant.DELIMITER+Integer.parseInt(record.substring(i+2,i+3))
+										+Constant.DELIMITER+y);
+			}
+		}
 		return null;
+	}
+	public void Endgame(ServerThread player){
+		String message = "Win" + Constant.DELIMITER;
+		if(host.getaccount() == player.getaccount()){
+			message += side;
+		}
+		else{
+			message += side*(-1);
+		}
+		host.send(message);
+		player.send(message);
+		for(int i=0;i<observer.size();i++){
+			observer.get(i).send(message);
+		}
+	}
+	public void start(){
+		host.send("Start"+Constant.DELIMITER+this.side);
+		player.send("Start"+Constant.DELIMITER+this.side*(-1));
+		for(int i=0;i<observer.size();i++){
+			observer.get(i).send("Start"+Constant.DELIMITER+Constant.OBSERVER);
+		}
 	}
 	public void quit(ServerThread user){
 		if(host.equals(user)){
@@ -182,22 +208,25 @@ class Room {
 		else if(player.equals(user)) server.updateRoom("Quit",account,null,this.side*(-1));
 		else server.updateRoom("Quit",account,null,-1); // observer quit #
 	}
-	public void broadcast(String message){
+	public void record(int px,int py,int x,int y){	
+		System.out.println("Room: rec."+px+py+x+y);
+		record = record + px + py + x + y;
+	}
+	public synchronized void broadcast(String message){
 		host.send(message);
 		player.send(message);
-	}
-	public void start(){
-		process = true;
-		host.setState(State.PLAYING.value);
-		host.send("Start"+Constant.DELIMITER+this.side);			// match start
-		player.setState(State.PLAYING.value);
-		player.send("Success");
-		player.send("Start"+Constant.DELIMITER+this.side*(-1));		// match start
+		for(int i=0;i<observer.size();i++){
+			observer.get(i).send(message);
+		}
 	}
 	public String getRoomInfo(){	// get room information to String
-		String result = "Room"+Constant.DELIMITER+account+Constant.DELIMITER+host.getname()+Constant.DELIMITER+side;
+		String result = "Room"+Constant.DELIMITER+
+					   account+Constant.DELIMITER+
+				host.getname()+Constant.DELIMITER+
+						  side+Constant.DELIMITER;
+		
 		if(player != null){
-			result = result+player.getname();
+			result += player.getname();
 		}
 		return result;
 	}
@@ -218,20 +247,6 @@ class ServerThread implements Runnable {
 	private OutputStream 	outputstream	= null;
 	
 	public State state = State.CONNECT;
-	
-	public enum State {
-		
-		/* Costum type variable */
-		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
-		
-		/* Default type variable */
-		protected int value;
-		
-		/* Constructor */
-		private State(int value){
-			this.value = value;
-		}
-	}
 	
 	/* Constructor */
 	public ServerThread(Socket sc,Server sv) {
@@ -289,11 +304,11 @@ class ServerThread implements Runnable {
 				}
 				else if(command.equals("Create")){
 					setState(State.WAITING);
-					room = createRoom(getname(), Integer.parseInt(token.nextToken())); 
+					room = createRoom(Integer.parseInt(token.nextToken())); 
 				}
 				else if(command.equals("Join")){
 					setState(State.WAITING);
-					room = joinRoom(token.nextToken(), getname(), Integer.parseInt(token.nextToken()));
+					room = joinRoom(token.nextToken(), Integer.parseInt(token.nextToken()));
 				}
 			}
 			else if(state == State.WAITING){		// state Waiting
@@ -312,11 +327,14 @@ class ServerThread implements Runnable {
 					quitRoom();
 				}
 				else if(command.equals("Move")){
-					room.broadcast("Move"+Constant.DELIMITER+
-						token.nextToken()+Constant.DELIMITER+
-						token.nextToken()+Constant.DELIMITER+
-						token.nextToken()+Constant.DELIMITER+
-						token.nextToken());
+					room.broadcast(receive);
+					room.record(Integer.parseInt(token.nextToken()),
+								Integer.parseInt(token.nextToken()),
+								Integer.parseInt(token.nextToken()),
+								Integer.parseInt(token.nextToken()));
+				}
+				else if(command.equals("Win")){
+					room.Endgame(this);
 				}
 			}
 		}
@@ -334,9 +352,6 @@ class ServerThread implements Runnable {
 		}
 		return result;
 	}
-	public void setState(int value){
-		setState(getState(value));
-	}
 	public void setState(State nextstate){	// switch from state to nextstate
 		
 		/* notice GUI to hide/show windows */
@@ -349,15 +364,6 @@ class ServerThread implements Runnable {
 		
 		/* Switch State */
 		state = nextstate;
-	}
-	private State getState(int value){
-		State result = null;
-		for(State state: State.values()){
-			if(state.value == value){
-				result = state;
-			}
-		}
-		return result;
 	}
 	private void End(){ 		// End this Thread
 		database.End();
@@ -392,18 +398,24 @@ class ServerThread implements Runnable {
 		}
 		return result;
 	}
-	private Room createRoom(String username,int side){
-		Room room = server.addRoom(account,this,username,side);
+	private Room createRoom(int side){
+		Room room = server.addRoom(this,side);
 		send("Success");
 		return room;
 	}
-	private Room joinRoom(String account,String username,int side){
-		Room room = server.joinRoom(account,this,username,side);
+	private Room joinRoom(String account,int side){
+		Room room = server.joinRoom(account, this, side);
 		return room;
 	}
 	private void quitRoom(){
 		Room room = server.getRoom(account);
-		if(room!=null) room.quit(this);		
+		if(room!=null){
+			room.quit(this);
+		}
+	}
+	public String getaccount(){
+		String result = account;
+		return result;
 	}
 	public String getname(){			// get name from database
 		String result = database.getUserName(account);

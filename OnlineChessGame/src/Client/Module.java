@@ -13,6 +13,12 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
+public class Module {	// Test
+	public static void main(String[] args){
+		
+	}
+}
+
 interface TextWindow {	// Windows with TextArea 
 	public String getText(String action);
 }
@@ -146,6 +152,12 @@ class setDialog extends basicDialog {
 			dialog.setSide(side);
 			dialog.dispose();
 		}
+	}
+}
+
+class Warndialog extends basicDialog {
+	public Warndialog(String text, int x, int y, int w, int h) {
+		super(text, x, y, w, h);
 	}
 }
 

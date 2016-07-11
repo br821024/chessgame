@@ -44,20 +44,6 @@ class ClientThread implements Runnable,EndThread {
 	
 	public State state = State.CONNECT;
 	
-	public enum State {
-		
-		/* Costum type variable */
-		END(-1), CONNECT(0), LOGIN(1), WAITING(2),PLAYING(3);
-		
-		/* Default type variable */
-		private int value;
-		
-		/* Constructor */
-		private State(int value){
-			this.value = value;
-		}
-	}
-	
 	public ClientThread(Socket sc){
 		try {
 			socket 			= sc;
@@ -131,6 +117,9 @@ class ClientThread implements Runnable,EndThread {
 									Integer.parseInt(token.nextToken()),
 									Integer.parseInt(token.nextToken()));
 				}
+				else if(command.equals("Win")){
+					gui.Endgame(Integer.parseInt(token.nextToken()));
+				}
 			}
 		}
 		
@@ -143,23 +132,23 @@ class ClientThread implements Runnable,EndThread {
 		/* notice GUI to hide/show windows */
 		switch(nextstate){
 			case END:
-				gui.setState(state.value, nextstate.value);
+				gui.setState(state, nextstate);
 				send("End");
 				break;
 			case CONNECT:
-				gui.setState(state.value, nextstate.value);
+				gui.setState(state, nextstate);
 				break;
 			case LOGIN:
-				gui.setState(state.value, nextstate.value);
+				gui.setState(state, nextstate);
 				break;
 			case WAITING:
-				gui.setState(state.value, nextstate.value);
+				gui.setState(state, nextstate);
 				break;
 			case PLAYING:
-				gui.setState(state.value, nextstate.value, args[0]);
+				gui.setState(state, nextstate, args[0]);
 				break;
 			default:
-				gui.setState(state.value, nextstate.value);
+				gui.setState(state, nextstate);
 		}
 		
 		/* Switch State */

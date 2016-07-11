@@ -37,7 +37,9 @@ public class MySQL {
 	
 	private void createTable(){
 		try{
-			statement.executeUpdate("CREATE TABLE IF NOT EXISTS chessgame.login(account_id INT(20) UNSIGNED NOT NULL AUTO_INCREMENT,user_id VARCHAR(32) NOT NULL,user_pass VARCHAR(32) NOT NULL ,user_name VARCHAR(32) NOT NULL DEFAULT \"Anonymous\", PRIMARY KEY(account_id) , UNIQUE(user_id));");
+			statement.executeUpdate("CREATE TABLE IF NOT EXISTS chessgame.login(account_id INT UNSIGNED NOT NULL AUTO_INCREMENT,user_id VARCHAR(62) NOT NULL,user_pass VARCHAR(62) NOT NULL ,user_name VARCHAR(62) NOT NULL DEFAULT \"Anonymous\", PRIMARY KEY(account_id) , UNIQUE(user_id)) AUTO_INCREMENT=2000;");
+			statement.executeUpdate("CREATE TABLE IF NOT EXISTS chessgame.game(game_id INT UNSIGNED NOT NULL AUTO_INCREMENT, host_id VARCHAR(62) NOT NULL, player_id VARCHAR(62) NOT NULL, record TEXT NOT NULL, PRIMARY KEY(game_id), FOREIGN KEY(host_id) REFERENCES chessgame.login(user_id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(player_id) REFERENCES chessgame.login(user_id) ON DELETE CASCADE ON UPDATE CASCADE) AUTO_INCREMENT=40000;");
+			//CREATE TABLE IF NOT EXISTS chessgame.game(game_id INT(20) UNSIGNED NOT NULL AUTO_INCREMENT, host_id VARCHAR(32) NOT NULL, player_id VARCHAR(32) NOT NULL, record TEXT NOT NULL, PRIMARY KEY(game_id), FOREIGN KEY(host_id) REFERENCES chessgame.login(user_id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(player_id) REFERENCES chessgame.login(user_id) ON DELETE CASCADE ON UPDATE CASCADE) AUTO_INCREMENT=20000;
 		}catch(SQLException e){System.out.println("SQL: "+e.toString());}
 	}
 	
