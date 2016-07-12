@@ -13,11 +13,15 @@ public class Center extends basicFrame implements TextWindow {
 	
 	/* Default type variable */
 	private ArrayList<roomButton> roomlist = new ArrayList<roomButton>(); 
-	private JButton B_Create 	= new basicButton("創建房間",850,40,150,30);
-	private JButton B_Profile 	= new basicButton("個人資訊",850,80,150,30);
-	private JButton B_Leave 	= new basicButton("離開大廳",850,120,150,30);
-	private JButton B_Exit 		= new basicButton("離開遊戲",850,160,150,30);
+	private JButton B_Create 	= new basicButton("創建房間",850,35,140,28);
+	private JButton B_Profile 	= new basicButton("個人資訊",850,85,140,28);
+	private JButton B_Leave 	= new basicButton("離開大廳",850,135,140,28);
+	private JButton B_Exit 		= new basicButton("離開遊戲",850,185,140,28);
 	
+	public static void main(String[] args){
+		Center center = new Center(null);
+		center.setVisible(true);
+	}
 	public Center(ClientThread controller){
 		super("Center",100,50,1030,796);	// set Title/X/Y/W/H
 		this.controller = controller;		// set Controller

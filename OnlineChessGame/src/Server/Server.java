@@ -55,6 +55,8 @@ public class Server {
 	}
 	public void initialRoom(ServerThread user){
 		for(int i=0; i<roomlist.size(); i++){
+			try { Thread.sleep(150); } 
+			catch (InterruptedException e) { e.printStackTrace(); }
 			user.send(roomlist.get(i).getRoomInfo());
 		}
 	}
