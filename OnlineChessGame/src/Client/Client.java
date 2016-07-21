@@ -66,7 +66,7 @@ class ClientThread implements Runnable,EndThread {
 			String command = token.nextToken();			// read Server's command
 			
 			if(command.equals("End")){					// handle End command
-				End();
+				setState(State.END);
 			}
 			
 			if(state == State.CONNECT){
@@ -85,9 +85,10 @@ class ClientThread implements Runnable,EndThread {
 				System.out.println("State: Login");
 				
 				if(command.equals("Done")){
-					setState(State.END);
+					setState(State.CONNECT);
 				} /* Room command handle by GUI */
 				else if(command.equals("Create")){ gui.Room(command,token); }
+				else if(command.equals("Delete")){ gui.Room(command,token); }
 				else if(command.equals("Join")){ gui.Room(command,token); }
 				else if(command.equals("Quit")){ gui.Room(command,token); }
 				else if(command.equals("Room")){ gui.Room(command,token); }
@@ -129,30 +130,31 @@ class ClientThread implements Runnable,EndThread {
 
 	public void setState(State nextstate, int... args){	// switch from state to nextstate
 		
+		/* Switch State */
+		State prestate = state;
+		state = nextstate;
+		
 		/* notice GUI to hide/show windows */
 		switch(nextstate){
 			case END:
-				gui.setState(state, nextstate);
+				gui.setState(prestate, nextstate);
 				send("End");
 				break;
 			case CONNECT:
-				gui.setState(state, nextstate);
+				gui.setState(prestate, nextstate);
 				break;
 			case LOGIN:
-				gui.setState(state, nextstate);
+				gui.setState(prestate, nextstate);
 				break;
 			case WAITING:
-				gui.setState(state, nextstate);
+				gui.setState(prestate, nextstate);
 				break;
 			case PLAYING:
-				gui.setState(state, nextstate, args[0]);
+				gui.setState(prestate, nextstate, args[0]);
 				break;
 			default:
-				gui.setState(state, nextstate);
+				gui.setState(prestate, nextstate);
 		}
-		
-		/* Switch State */
-		state = nextstate;
 	}
 	public void send(String message){		// send Message to Server
 		try {

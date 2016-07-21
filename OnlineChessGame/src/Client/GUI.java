@@ -37,6 +37,9 @@ public class GUI extends JFrame {
 		if(action.equals("Create")){
 			centerUI.addRoom(new roomButton(controller,token.nextToken(),token.nextToken(),Integer.parseInt(token.nextToken())));
 		}
+		else if(action.equals("Delete")){
+			centerUI.deleteRoom(token.nextToken());
+		}
 		else if(action.equals("Join")){
 			centerUI.joinRoom(token.nextToken(),token.nextToken(),Integer.parseInt(token.nextToken()));
 		}
@@ -89,6 +92,7 @@ public class GUI extends JFrame {
 					loginUI.setVisible(true);
 					break;
 				case LOGIN:
+					centerUI.initialroom();
 					centerUI.setVisible(true);
 					break;
 				case WAITING:
