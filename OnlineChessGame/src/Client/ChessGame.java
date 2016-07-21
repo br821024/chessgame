@@ -207,14 +207,17 @@ public class ChessGame extends basicFrame {
 		chess.moveto(x,y);
 		turn = turn*(-1);	// switch turn
 	}
+	public void Surrender(){
+		controller.send("Surrender");
+	}
 	public void Endgame(int side){
 		String message = null;
 		turn = Constant.RANDOM;
-		if(this.side == side){
-			message = "You Win !";
+		if(side == Constant.WHITE){
+			message = "White Win !";
 		}
 		else{
-			message = "You Lose !";
+			message = "Black Win !";
 		}
 		System.out.println(message);
 		JDialog dialog = new messageDialog(controller,"Quit",message);

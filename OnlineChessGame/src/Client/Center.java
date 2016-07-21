@@ -38,6 +38,17 @@ public class Center extends basicFrame implements TextWindow {
 		add(B_Exit);
 	}
 	
+	public void initialroom(){
+		clearRoom();
+		updateRoom();
+	}
+	public void clearRoom(){
+		System.out.println("Clear Room");
+		for(int i=0;i<roomlist.size();i++){
+			remove(roomlist.get(i));
+			roomlist.remove(i);
+		}
+	}
 	public void updateRoom(){
 		
 		/* Default type variable */
@@ -72,8 +83,12 @@ public class Center extends basicFrame implements TextWindow {
 		roomButton target = getRoom(account);
 		if(target!=null){
 			target.join("",side);
-			if(target.countplayer()==0) deleteRoom(account);
-			updateRoom();
+			if(target.countplayer()==0){
+				deleteRoom(account);
+			}
+			else{
+				updateRoom();
+			}
 		}
 	}
 	public roomButton getRoom(String account){
@@ -86,10 +101,11 @@ public class Center extends basicFrame implements TextWindow {
 	public void deleteRoom(String account){
 		for(int i=0;i<roomlist.size();i++){
 			if(roomlist.get(i).equals(account)){
-				roomlist.get(i).setVisible(false);
+				remove(roomlist.get(i));
 				roomlist.remove(i);
 			}
 		}
+		updateRoom();
 	}
 
 	public String getText(String action) {

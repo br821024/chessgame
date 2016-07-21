@@ -110,6 +110,7 @@ public class Server {
 				roomlist.remove(i);
 			}
 		}
+		updateRoom("Delete", account, null, -1);
 	}
 }
 
@@ -148,7 +149,6 @@ class Room {
 					this.side = side*(-1);					// host become the opposite side
 				}
 			}
-			process = true;
 			host.setState(State.PLAYING);
 			player.send("Success");
 			player.setState(State.PLAYING);
@@ -181,21 +181,28 @@ class Room {
 		}
 		return null;
 	}
-	public void Endgame(ServerThread player){
+	public void Endgame(ServerThread winner){
 		String message = "Win" + Constant.DELIMITER;
-		if(host.getaccount() == player.getaccount()){
+		if(host.getaccount() == winner.getaccount()){
 			message += side;
 		}
 		else{
 			message += side*(-1);
 		}
-		host.send(message);
-		player.send(message);
+		if(host.state != State.END){
+			host.send(message);
+		}
+		if(player.state != State.END){
+			player.send(message);
+		}
 		for(int i=0;i<observer.size();i++){
 			observer.get(i).send(message);
 		}
+		process = false;
+		server.deleteRoom(account);
 	}
 	public void start(){
+		process = true;
 		host.send("Start"+Constant.DELIMITER+this.side);
 		player.send("Start"+Constant.DELIMITER+this.side*(-1));
 		for(int i=0;i<observer.size();i++){
@@ -203,22 +210,41 @@ class Room {
 		}
 	}
 	public void quit(ServerThread user){
-		if(host.equals(user)){
-			server.updateRoom("Quit",account,null,this.side);
-			server.deleteRoom(account);
+		if(host.equal(user.getaccount())){
+			if(process){
+				Endgame(player);
+			}
 		}
-		else if(player.equals(user)) server.updateRoom("Quit",account,null,this.side*(-1));
-		else server.updateRoom("Quit",account,null,-1); // observer quit #
+		else if(player.equal(user.getaccount())){
+			if(process){
+				Endgame(host);
+			}
+		}
+		else server.updateRoom("Quit",account,null,Constant.OBSERVER); // observer quit #
+	}
+	public void Surrender(ServerThread loser){
+		if(host.equal(loser.getaccount())){
+			if(process){
+				Endgame(player);
+			}
+		}
+		else if(player.equal(loser.getaccount())){
+			if(process){
+				Endgame(host);
+			}
+		}
 	}
 	public void record(int px,int py,int x,int y){	
 		System.out.println("Room: rec."+px+py+x+y);
 		record = record + px + py + x + y;
 	}
 	public synchronized void broadcast(String message){
-		host.send(message);
-		player.send(message);
-		for(int i=0;i<observer.size();i++){
-			observer.get(i).send(message);
+		if(process){
+			host.send(message);
+			player.send(message);
+			for(int i=0;i<observer.size();i++){
+				observer.get(i).send(message);
+			}
 		}
 	}
 	public String getRoomInfo(){	// get room information to String
@@ -293,10 +319,9 @@ class ServerThread implements Runnable {
 				}
 				
 				if(result == true){
-					setState(State.LOGIN);
 					send("Success");
+					setState(State.LOGIN);
 					result = false;
-					server.initialRoom(this);
 				}
 			}
 			else if(state == State.LOGIN){			// state Login
@@ -316,17 +341,11 @@ class ServerThread implements Runnable {
 			else if(state == State.WAITING){		// state Waiting
 				if(command.equals("Quit")){
 					setState(State.LOGIN);
-					send("Done");
-					room = null;
-					quitRoom();
 				}
 			}
 			else if(state == State.PLAYING){		// state Playing
 				if(command.equals("Quit")){
 					setState(State.LOGIN);
-					send("Done");
-					room = null;
-					quitRoom();
 				}
 				else if(command.equals("Move")){
 					room.broadcast(receive);
@@ -334,6 +353,9 @@ class ServerThread implements Runnable {
 								Integer.parseInt(token.nextToken()),
 								Integer.parseInt(token.nextToken()),
 								Integer.parseInt(token.nextToken()));
+				}
+				else if(command.equals("Surrender")){
+					room.Surrender(this);
 				}
 				else if(command.equals("Win")){
 					room.Endgame(this);
@@ -356,16 +378,24 @@ class ServerThread implements Runnable {
 	}
 	public void setState(State nextstate){	// switch from state to nextstate
 		
-		/* notice GUI to hide/show windows */
-		switch(nextstate){
-			case END:
-				database.End();
-				send("End");
-				break;
+		/* Switch State */
+		State prestate = state;
+		state = nextstate;
+		
+		switch(prestate){
+			case PLAYING:
+				send("Done");
+				quitRoom();
 		}
 		
-		/* Switch State */
-		state = nextstate;
+		/* notice GUI to hide/show windows */
+		switch(nextstate){
+			case LOGIN:
+				server.initialRoom(this);
+				break;
+			case END:
+				End();
+		}
 	}
 	private void End(){ 		// End this Thread
 		database.End();
@@ -410,10 +440,10 @@ class ServerThread implements Runnable {
 		return room;
 	}
 	private void quitRoom(){
-		Room room = server.getRoom(account);
 		if(room!=null){
 			room.quit(this);
 		}
+		room = null;
 	}
 	public String getaccount(){
 		String result = account;
