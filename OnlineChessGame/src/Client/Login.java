@@ -23,7 +23,7 @@ public class Login extends basicDialog implements TextWindow {
 		super("Login",500,200,400,132);
 		B_Register.addActionListener(new SendListener(controller,"Register",this));
 		B_Login.addActionListener(new SendListener(controller,"Login",this));
-		addWindowListener(new CloseListener(controller));
+		this.addWindowListener(new CloseListener(controller));
 		add(L_account);
 		add(T_account);
 		add(L_password);

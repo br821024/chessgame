@@ -79,8 +79,12 @@ public class Server {
 					account+Constant.DELIMITER+
 					   side;
 		}
+		else if(action.equals("Delete")){
+			result = "Delete"+Constant.DELIMITER+
+					  account+Constant.DELIMITER;
+		}
 		for(int i=0;i<threadlist.size();i++){
-			if(threadlist.get(i).state.value == State.LOGIN.value){
+			if(threadlist.get(i).state == State.LOGIN){
 				threadlist.get(i).send(result);
 			}
 		}
@@ -110,7 +114,7 @@ public class Server {
 				roomlist.remove(i);
 			}
 		}
-		updateRoom("Delete", account, null, -1);
+		updateRoom("Delete", account, "", Constant.RANDOM);
 	}
 }
 
@@ -189,10 +193,10 @@ class Room {
 		else{
 			message += side*(-1);
 		}
-		if(host.state != State.END){
+		if(host.state == State.PLAYING){
 			host.send(message);
 		}
-		if(player.state != State.END){
+		if(player.state == State.PLAYING){
 			player.send(message);
 		}
 		for(int i=0;i<observer.size();i++){
@@ -213,6 +217,9 @@ class Room {
 		if(host.equal(user.getaccount())){
 			if(process){
 				Endgame(player);
+			}
+			else{
+				server.deleteRoom(account);
 			}
 		}
 		else if(player.equal(user.getaccount())){
@@ -340,6 +347,8 @@ class ServerThread implements Runnable {
 			}
 			else if(state == State.WAITING){		// state Waiting
 				if(command.equals("Quit")){
+					quitRoom();
+					send("Done");
 					setState(State.LOGIN);
 				}
 			}

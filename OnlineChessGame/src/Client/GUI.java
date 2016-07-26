@@ -112,10 +112,7 @@ public class GUI extends JFrame {
 	{
 		loginUI.dispose();
 		centerUI.dispose();
-		if(state == State.WAITING){
-			loadUI.End();
-		}
-		else if(state == State.PLAYING){
+		if(gameUI != null){
 			gameUI.dispose();
 		}
 	}	

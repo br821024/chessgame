@@ -65,6 +65,7 @@ class SendListener implements ActionListener{
 	
 	public void actionPerformed(ActionEvent e) {
 		if(setSide == true) { // Set Side before Sending
+			arguments = "";
 			new setDialog(this);
 		}
 		else { // goto Sending process 
