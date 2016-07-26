@@ -138,7 +138,6 @@ class ClientThread implements Runnable,EndThread {
 		switch(nextstate){
 			case END:
 				gui.setState(prestate, nextstate);
-				send("End");
 				break;
 			case CONNECT:
 				gui.setState(prestate, nextstate);
@@ -173,7 +172,7 @@ class ClientThread implements Runnable,EndThread {
 	}
 
 	public void End() {
-		setState(State.END);
+		send("End");
 	}
 }
 

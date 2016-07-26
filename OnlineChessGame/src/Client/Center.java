@@ -45,6 +45,7 @@ public class Center extends basicFrame implements TextWindow {
 	public void clearRoom(){
 		System.out.println("Clear Room");
 		for(int i=0;i<roomlist.size();i++){
+			System.out.println("Remove room: "+roomlist.get(i).getOwner());
 			remove(roomlist.get(i));
 			roomlist.remove(i);
 		}
@@ -198,5 +199,8 @@ class roomButton extends JButton {
 		else{
 			return (formatlength-name.length())/2;
 		}
+	}
+	public String getOwner(){
+		return String.valueOf(owner);
 	}
 }
