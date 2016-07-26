@@ -128,6 +128,7 @@ public class ChessGame extends basicFrame {
 	}
 	public void initialize(int side){
 		/* Set user information */
+		turn = Constant.WHITE_SIDE;
 		this.side = side;
 		removeChess();		// remove all Chess on board
 		
