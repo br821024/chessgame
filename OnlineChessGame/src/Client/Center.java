@@ -43,11 +43,11 @@ public class Center extends basicFrame implements TextWindow {
 		updateRoom();
 	}
 	public void clearRoom(){
-		System.out.println("Clear Room");
-		for(int i=0;i<roomlist.size();i++){
-			System.out.println("Remove room: "+roomlist.get(i).getOwner());
-			remove(roomlist.get(i));
-			roomlist.remove(i);
+		System.out.println("Clear Room roomlist: "+roomlist.size());
+		while(roomlist.size()>0){
+			System.out.println("Remove room: "+roomlist.get(0).getOwner());
+			remove(roomlist.get(0));
+			roomlist.remove(0);
 		}
 	}
 	public void updateRoom(){
@@ -58,6 +58,7 @@ public class Center extends basicFrame implements TextWindow {
 		
 		for(int i=0;i<roomlist.size();i++){
 			/* get Button and defined its position */
+			System.out.println("Set roomlist "+i+"th "+roomlist.get(i).getOwner());
 			if(roomlist.get(i).countplayer()==2){
 				roomlist.get(i).setBounds(20,620+40*(y),500,30);
 				y++;
