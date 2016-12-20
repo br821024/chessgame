@@ -33,6 +33,23 @@ public class Server {
 		}catch (IOException e){ System.out.println("Server: "+ e.toString()); }
 	}
 	
+	public void broadcast(String message){
+		String extendmessage = "Message"+Constant.DELIMITER+message+"\n"+Constant.DELIMITER;
+		for(int i=0;i<threadlist.size();i++){
+			if(threadlist.get(i).state == State.LOGIN){
+				threadlist.get(i).send(extendmessage);
+			}
+		}
+	}
+	public void PrivateMessage(String message,String account){
+		String extendmessage = "Message"+Constant.DELIMITER+"[Private] "+message+"\n"+Constant.DELIMITER; 
+		for(int i=0;i<threadlist.size();i++){
+			if(threadlist.get(i).state == State.LOGIN && threadlist.get(i).getaccount().equals(account)){
+				threadlist.get(i).send(extendmessage);
+				break;
+			}
+		}
+	}
 	public void addThread(ServerThread serverthread){	// add thread to thread list
 		threadlist.add(serverthread);
 	}
@@ -53,12 +70,31 @@ public class Server {
 		}
 		return result;
 	}
-	public void initialRoom(ServerThread user){
-		for(int i=0; i<roomlist.size(); i++){
-			try { Thread.sleep(150); } 
-			catch (InterruptedException e) { e.printStackTrace(); }
-			user.send(roomlist.get(i).getRoomInfo());
+	public void initialUser(ServerThread user){
+		System.out.println("Prepare initial message...User");
+		String message = "";
+		for(int i=0; i<threadlist.size(); i++){
+			if(threadlist.get(i).state == State.LOGIN){
+				message += threadlist.get(i).getUserInfo();
+			}
 		}
+		user.send(message);
+	}
+	public void updateUser(String action,String parameter){
+		String message = action+parameter;
+		for(int i=0; i<threadlist.size(); i++){
+			if(threadlist.get(i).state == State.LOGIN){
+				threadlist.get(i).send(message);
+			}
+		}
+	}
+	public void initialRoom(ServerThread user){
+		System.out.println("Prepare initial message...Room");
+		String message = "";
+		for(int i=0; i<roomlist.size(); i++){
+			message += roomlist.get(i).getRoomInfo();
+		}
+		user.send(message);
 	}
 	public void updateRoom(String action, String account, String username, int side){
 		String result = "";
@@ -147,7 +183,9 @@ class Room {
 			/* Case: Random */
 			if(this.side == Constant.RANDOM){				// host choose Random side
 				if(side == Constant.RANDOM){				// player choose Random too
-					this.side = (int)Math.random()*100%2;	// get a random side 
+					int randomside[] = {Constant.BLACK,Constant.WHITE}; // get a random side
+					int random = (int)Math.random()*100%2;
+					this.side = randomside[random];
 				}
 				else{										// player pick up a side
 					this.side = side*(-1);					// host become the opposite side
@@ -261,7 +299,9 @@ class Room {
 						  side+Constant.DELIMITER;
 		
 		if(player != null){
-			result += player.getname();
+			result += player.getname()+Constant.DELIMITER;
+		} else {
+			result += "null"+Constant.DELIMITER;
 		}
 		return result;
 	}
@@ -344,6 +384,32 @@ class ServerThread implements Runnable {
 					setState(State.WAITING);
 					room = joinRoom(token.nextToken(), Integer.parseInt(token.nextToken()));
 				}
+				else if(command.equals("Message")){
+					String message = token.nextToken();
+					if(token.hasMoreTokens()){
+						String target = token.nextToken();
+						server.PrivateMessage(message,target);
+					}else{
+						server.broadcast(message);
+					}
+				}
+				else if(command.equals("Profile")){
+					String nickname = token.nextToken();
+					if(!database.getUserName(account).equals(nickname)){
+						database.setUserName(account,nickname);
+					}
+				}
+				else if(command.equals("Initial")){
+					int step = Integer.parseInt(token.nextToken());
+					switch(step){
+						case 1:
+							server.initialUser(this);
+							break;
+						case 2:
+							server.initialRoom(this);
+							break;
+					}
+				}
 			}
 			else if(state == State.WAITING){		// state Waiting
 				if(command.equals("Quit")){
@@ -378,6 +444,13 @@ class ServerThread implements Runnable {
 		server.endThread();
 	}
 	
+	public String getUserInfo(){
+		String info = "";
+		info += "User"+Constant.DELIMITER+
+				getaccount()+Constant.DELIMITER+
+				getname()+Constant.DELIMITER;
+		return info;
+	}
 	public boolean equal(String account){
 		boolean result = false;
 		if(this.account.equals(account)){
@@ -392,15 +465,20 @@ class ServerThread implements Runnable {
 		state = nextstate;
 		
 		switch(prestate){
+			case LOGIN:
+				server.updateUser("Delete",this.getUserInfo());
+				break;
 			case PLAYING:
-				send("Done");
+				if(nextstate != state.END){
+					send("Done");
+				}
 				quitRoom();
 		}
 		
 		/* notice GUI to hide/show windows */
 		switch(nextstate){
 			case LOGIN:
-				server.initialRoom(this);
+				server.updateUser("Add",this.getUserInfo());
 				break;
 			case END:
 				End();

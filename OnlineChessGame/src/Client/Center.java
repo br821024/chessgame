@@ -1,207 +1,172 @@
 package Client;
 
+import java.awt.Color;
 import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
+
+import javax.imageio.ImageIO;
+import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.text.DefaultCaret;
 
 public class Center extends basicFrame implements TextWindow {
 
 	/* Custom type variable */
 	private ClientThread controller = null;
+	private RoomHandler roomhandler = null;
 	
 	/* Default type variable */
-	private ArrayList<roomButton> roomlist = new ArrayList<roomButton>(); 
-	private JButton B_Create 	= new basicButton("創建房間",850,35,140,28);
-	private JButton B_Profile 	= new basicButton("個人資訊",850,85,140,28);
-	private JButton B_Leave 	= new basicButton("離開大廳",850,135,140,28);
-	private JButton B_Exit 		= new basicButton("離開遊戲",850,185,140,28);
+	private JLabel 	L_Waitroom	= new ColorTextLabel("加入房間",35,20,100,20,Color.WHITE);
+	private JLabel 	L_Fullroom	= new ColorTextLabel("進入觀戰",35,230,100,20,Color.WHITE);
+	private JLabel	L_Message	= new ColorTextLabel("查看訊息",35,440,100,20,Color.WHITE);
+	private JButton B_Send		= new basicButton("傳送訊息",463,705,100,30);
+	private JButton B_Create 	= new basicButton("創建房間",625,491,140,35);
+	private JButton B_Profile 	= new basicButton("修改暱稱",625,556,140,35);
+	private JButton B_Leave 	= new basicButton("離開大廳",625,621,140,35);
+	private JButton B_Exit 		= new basicButton("離開遊戲",625,686,140,35);
+	private ScrollList	P_Userlist	= new ScrollList(610,20,175,407,0,20);
+	private JScrollPane P_Waitroom	= new basicScrollPane(25,45,537,170);
+	private JScrollPane P_Fullroom	= new basicScrollPane(25,255,537,170);
+	private ScrollTextArea P_Message	= new ScrollTextArea(25,465,537,180);
+	private ScrollTextArea P_SendText	= new ScrollTextArea(25,665,417,70);
+	private JTextField	T_account 	= new inputTextField(463,665,100,25);
+	private JLabel	L_background	= new basicLabel("",0,0,590,796);
+	
+	private DefaultListModel<String> userlist = null;
 	
 	public static void main(String[] args){
 		Center center = new Center(null);
 		center.setVisible(true);
 	}
 	public Center(ClientThread controller){
-		super("Center",100,50,1030,796);	// set Title/X/Y/W/H
+		super("Center",100,50,805,786);		// set Title/X/Y/W/H
 		this.controller = controller;		// set Controller
 		this.addWindowListener(new CloseListener(controller));
-		
+		roomhandler = new RoomHandler(controller,P_Waitroom,P_Fullroom);
 		/* Define button function and add into Component Layer */
 		B_Create.addActionListener(new SendListener(controller,"Create"));
+		B_Create.setFont(new Font("微軟正黑體", Font.PLAIN, 18));
 		B_Profile.addActionListener(new SendListener(controller,"Profile"));
+		B_Profile.setFont(new Font("微軟正黑體", Font.PLAIN, 18));
 		B_Leave.addActionListener(new SendListener(controller,"Logout"));
+		B_Leave.setFont(new Font("微軟正黑體", Font.PLAIN, 18));
 		B_Exit.addActionListener(new SendListener(controller,"End"));
+		B_Exit.setFont(new Font("微軟正黑體", Font.PLAIN, 18));
+		B_Send.addActionListener(new SendListener(controller,"Message",this));
+		
+		try{
+			BufferedImage image = ImageIO.read(new File("Chess/background.jpg"));
+			L_background.setIcon(new ImageIcon(image));
+		}catch(IOException e){
+			e.printStackTrace();
+		}
+		
+		P_Waitroom.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+		P_Fullroom.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+		P_Message.getTextArea().setText("/* 歡迎使用線上西洋棋系統 */\n");
+		P_Message.getTextArea().setEditable(false);
+		//P_Message.getTextArea().append("a\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\n");
+		//P_Message.getTextArea().append("a\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\n");
+		
+		P_Userlist.getList().addMouseListener(new ListListener(this,P_Userlist.getList()));
+		userlist = (DefaultListModel) P_Userlist.getList().getModel();
+
+		add(P_Userlist);
 		add(B_Create);
 		add(B_Profile);
 		add(B_Leave);
 		add(B_Exit);
+		add(B_Send);
+		add(T_account);
+		add(L_Waitroom);
+		add(P_Waitroom);
+		add(L_Fullroom);
+		add(P_Fullroom);
+		add(L_Message);
+		add(P_Message);
+		add(P_SendText);
+		add(L_background);
 	}
 	
-	public void initialroom(){
-		clearRoom();
-		updateRoom();
+	public void setTarget(String account){
+		T_account.setText(account);
 	}
-	public void clearRoom(){
-		System.out.println("Clear Room roomlist: "+roomlist.size());
-		while(roomlist.size()>0){
-			System.out.println("Remove room: "+roomlist.get(0).getOwner());
-			remove(roomlist.get(0));
-			roomlist.remove(0);
-		}
+	public void showMessage(String message){
+		P_Message.getTextArea().append(message);
 	}
 	public void updateRoom(){
-		
-		/* Default type variable */
-		int x = 0;	// # of the waiting room
-		int y = 0;	// # of the Full room
-		
-		for(int i=0;i<roomlist.size();i++){
-			/* get Button and defined its position */
-			System.out.println("Set roomlist "+i+"th "+roomlist.get(i).getOwner());
-			if(roomlist.get(i).countplayer()==2){
-				roomlist.get(i).setBounds(20,620+40*(y),500,30);
-				y++;
-			}
-			else{
-				roomlist.get(i).setBounds(20+250*(x%3),20+40*(x/3),230,30);
-				x++;
+		roomhandler.updateRoom();
+	}
+	public void addUser(String account){
+		boolean result = true;
+		for(int i=0;i<userlist.getSize();i++){
+			if(userlist.get(i).equals(account)){
+				result = false;
+				break;
 			}
 		}
-	}
-	public void addRoom(roomButton room){
-		roomlist.add(room);				// add Room into array
-		this.add(room);					// add Room into Component Layer
-		updateRoom();					// update the position of room button
-	}
-	public void joinRoom(String account,String player,int side){
-		roomButton target = getRoom(account);
-		if(target!=null){				// check to avoid null pointer 
-			target.join(player,side);
-			updateRoom();
+		if(result){
+			userlist.addElement(account);
 		}
 	}
-	public void quitRoom(String account,int side){
-		roomButton target = getRoom(account);
-		if(target!=null){
-			target.join("",side);
-			if(target.countplayer()==0){
-				deleteRoom(account);
-			}
-			else{
-				updateRoom();
+	public void initialUser(){
+		userlist.removeAllElements();
+	}
+	public void deleteUser(String account){
+		for(int i=0;i<userlist.getSize();i++){
+			if(userlist.get(i).equals(account)){
+				userlist.remove(i);
+				break;
 			}
 		}
 	}
-	public roomButton getRoom(String account){
-		roomButton room = null;
-		for(int i=0;i<roomlist.size();i++){
-			if(roomlist.get(i).equals(account)) room = roomlist.get(i);
-		}
-		return room;
+	public void addRoom(String account,String host,int side){
+		roomhandler.addRoom(account,host,side);
 	}
 	public void deleteRoom(String account){
-		for(int i=0;i<roomlist.size();i++){
-			if(roomlist.get(i).equals(account)){
-				remove(roomlist.get(i));
-				roomlist.remove(i);
-			}
-		}
-		updateRoom();
+		roomhandler.deleteRoom(account);
+	}
+	public void joinRoom(String account,String player,int side){
+		roomhandler.joinRoom(account, player, side);
+	}
+	public void quitRoom(String account,int side){
+		roomhandler.quitRoom(account, side);
+	}
+	public void initialRoom(){
+		roomhandler.initialRoom();
 	}
 
 	public String getText(String action) {
-		return null;
-	}
-}
-
-class roomButton extends JButton {
-	
-	/* Default type variable */
-	private String 		owner	= null;		// Room owner's account(One account only host one room)
-	private String 		Text 	= null;		// Title show on the button
-	private final int formatlength = 32;
-
-	private Hashtable<Integer,String> player = new Hashtable<Integer,String>();
-	private Hashtable<Integer,String> symbol = new Hashtable<Integer,String>();
-	
-	/* Constructor */
-	public roomButton(ClientThread controller,String account,String name,int side){
-		addActionListener(new SendListener(controller,"Join",account,String.valueOf(side)));
-		setFont(new Font("Arial Unicode MS", Font.PLAIN, 16));
-		symbol.put(Constant.WHITE_SIDE,"\u25cb");
-		symbol.put(Constant.BLACK_SIDE,"\u25cf");
-		symbol.put(Constant.RANDOM,"\u25d1");
-		owner = account;		// set room owner's Account
-		join(name,side);		// set the host on target side
-	}
-
-	public boolean equals(String account){
-		boolean result = false;
-		if(account.equals(owner)){
-			result = true;
-		}
-		return result;
-	}
-	public int countplayer(){
-		return player.size();
-	}
-	public synchronized void join(String name,int side){
-		/* set the random host to the opposite side of join player */
-		if(player.containsKey(Constant.RANDOM)){
-			String hostname = player.remove(Constant.RANDOM);
-			player.put(side*(-1),hostname);
-		}
-		
-		if(countplayer()==2){
-			// room is full join as Constant.OBSERVER
-		}
-		else{
-			player.put(side,name);
-		}
-		
-		formatText();
-	}
-	private void formatText(){				 // format the title of the button
-		if(countplayer()==2){
-			Text =	"%1$"+format(player.get(Constant.WHITE),1)+"s"+symbol.get(Constant.WHITE)+" "+player.get(Constant.WHITE)+"%2$"+format(player.get(Constant.WHITE),0)+"s"+"　v.s "+
-					"%1$"+format(player.get(Constant.BLACK),0)+"s"+symbol.get(Constant.BLACK)+" "+player.get(Constant.BLACK)+"%2$-"+format(player.get(Constant.BLACK),1)+"s";
-			Text = String.format(Text,"","","","");
-		}
-		else{
-			/* Default type variable */
-			Enumeration name = player.elements();
-			Enumeration keys = player.keys();
-			String hostname = null;
-			int side = 0;
-			
-			/* get host information */
-			if(name.hasMoreElements()){
-				hostname = (String) name.nextElement();
+		String header = controller.getAccount()+" : ";
+		String message = null;
+		if(action.equals("Message")){
+			message = P_SendText.getTextArea().getText().trim();
+			if(message.equals("")){
+				return null;
+			} else {
+				message = header + message + Constant.DELIMITER;
 			}
-			if(keys.hasMoreElements()){
-				side = (Integer) keys.nextElement();
+			String target = T_account.getText().trim();
+			if(!target.equals("")){
+				message += target+Constant.DELIMITER;
 			}
-			
-			Text = symbol.get(side)+" %1$"+format(player.get(side),1)+"s"+player.get(side)+"%2$"+format(player.get(side),0)+"s";
-			Text = String.format(Text,"","");
+			P_SendText.getTextArea().setText("");
 		}
-		
-		setText(Text);
-	}	
-	private int format(String name, int type){	// return value is amount of spaces required
-		if(type==0) {
-			return (formatlength-name.length())/2;
-		}
-		
-		if(type==1 && name.length()%2 == 1) {
-			return (formatlength-name.length())/2+1;
-		}
-		else{
-			return (formatlength-name.length())/2;
-		}
-	}
-	public String getOwner(){
-		return String.valueOf(owner);
+		else{ System.out.println("TextWindow: Undefined Action Type"); }
+		return message;
 	}
 }

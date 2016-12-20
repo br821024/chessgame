@@ -24,17 +24,11 @@ public class MySQL {
 		catch(SQLException e){System.out.println("SQL: "+e.toString());}
 	}
 	
-	public void initialize(){
-		createDB();
-		createTable();
-	}
-	
-	private void createDB(){
+	private void createDatabase(){
 		try{
 			statement.executeUpdate("CREATE DATABASE IF NOT EXISTS chessgame");
 		}catch(SQLException e){System.out.println("SQL: "+e.toString());}
 	}
-	
 	private void createTable(){
 		try{
 			statement.executeUpdate("CREATE TABLE IF NOT EXISTS chessgame.login(account_id INT UNSIGNED NOT NULL AUTO_INCREMENT,user_id VARCHAR(62) NOT NULL,user_pass VARCHAR(62) NOT NULL ,user_name VARCHAR(62) NOT NULL DEFAULT \"Anonymous\", PRIMARY KEY(account_id) , UNIQUE(user_id)) AUTO_INCREMENT=2000;");
@@ -42,7 +36,16 @@ public class MySQL {
 			//CREATE TABLE IF NOT EXISTS chessgame.game(game_id INT(20) UNSIGNED NOT NULL AUTO_INCREMENT, host_id VARCHAR(32) NOT NULL, player_id VARCHAR(32) NOT NULL, record TEXT NOT NULL, PRIMARY KEY(game_id), FOREIGN KEY(host_id) REFERENCES chessgame.login(user_id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(player_id) REFERENCES chessgame.login(user_id) ON DELETE CASCADE ON UPDATE CASCADE) AUTO_INCREMENT=20000;
 		}catch(SQLException e){System.out.println("SQL: "+e.toString());}
 	}
-	
+	public void initialize(){
+		createDatabase();
+		createTable();
+	}
+	public void End(){
+		try {
+			connection.close();
+		} catch (SQLException e) { System.out.println("MySQL: "+e.toString()); }
+	}
+
 	public int checkaccount(String account){
 		int result = -1;
 		try{
@@ -55,7 +58,6 @@ public class MySQL {
 		}catch(SQLException e){System.out.print("MySQL: Checkaccount Error"+ e.toString()); initialize();}
 		return result;
 	}
-	
 	public Boolean login(String account,String password){
 		Boolean result = false;
 		try{
@@ -68,10 +70,9 @@ public class MySQL {
 			}
 			prstmt.close();
 		}
-		catch(SQLException e){System.out.println("MySQL: Login Error: "+e.toString()); initialize();}
+		catch(SQLException e){System.out.println("MySQL: Try to Initialize..."); initialize();}
 		return result;
 	}
-	
 	public Boolean register(String account,String password){
 		try{
 			PreparedStatement prstmt = null;
@@ -82,9 +83,21 @@ public class MySQL {
 			prstmt.execute();
 			prstmt.close();
 			return true;
-		}catch(SQLException e){System.out.println("MySQL: Register Error: "+e.toString()); initialize(); return false;}
+		}
+		catch(SQLException e){System.out.println("MySQL: Try to Initialize..."); initialize(); return false;}
 	}
-	
+	public void setUserName(String account,String nickname){
+		Boolean result = false;
+		try{
+			PreparedStatement prstmt = null;
+			prstmt = connection.prepareStatement("UPDATE chessgame.login SET user_name = ? WHERE user_id = ?");
+			prstmt.setString(1,nickname);
+			prstmt.setString(2,account);
+			prstmt.execute();
+			prstmt.close();
+		}
+		catch(SQLException e){System.out.println("MySQL: "+e.toString());}
+	}
 	public String getUserName(String account){
 		try{
 			PreparedStatement prstmt = null;
@@ -92,14 +105,9 @@ public class MySQL {
 			prstmt.setString(1,account);
 			resultset = prstmt.executeQuery();
 			if(resultset.next()) return resultset.getString(1);
-		}catch(SQLException e){System.out.println("MySQL: "+e.toString());}
+		}
+		catch(SQLException e){System.out.println("MySQL: "+e.toString());}
 		return null;
-	}
-	
-	public void End(){
-		try {
-			connection.close();
-		} catch (SQLException e) { System.out.println("MySQL: "+e.toString()); }
 	}
 }
 
